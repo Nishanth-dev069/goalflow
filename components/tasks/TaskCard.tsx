@@ -1,0 +1,108 @@
+'use client'
+
+import React, { useState } from 'react'
+import { Task } from '@/types'
+import { Check, Loader2, ArrowRight } from 'lucide-react'
+import { PriorityBadge } from '@/components/shared/PriorityBadge'
+import { format, isPast, isToday } from 'date-fns'
+import { cn } from '@/lib/utils'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
+
+export function TaskCard({ task }: { task: Task }) {
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  
+  const isCompleted = task.status === 'done'
+  const isOverdue = task.is_overdue && !isCompleted
+
+  const pColor = {
+    urgent: 'bg-rose-500',
+    high: 'bg-orange-500',
+    medium: 'bg-amber-500',
+    low: 'bg-emerald-500'
+  }[task.priority]
+
+  const updateMutation = useMutation({
+    mutationFn: async (status: string) => {
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      })
+      if (!res.ok) throw new Error('Failed to update status')
+      return res.json()
+    },
+    onMutate: async (status) => {
+      // Very basic optimistic update for the list views
+      toast.success(`Task marked as ${status.replace('_', ' ')}`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    }
+  })
+
+  const cycleStatus = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const next = task.status === 'todo' ? 'in_progress' : task.status === 'in_progress' ? 'done' : 'todo'
+    updateMutation.mutate(next)
+  }
+
+  return (
+    <div 
+      onClick={() => router.push(`/tasks/${task.id}`)}
+      className={cn(
+        "bg-[#111111] border border-[#2a2a2a] rounded-xl p-4 hover:border-[#3a3a3a] transition-all cursor-pointer relative group flex",
+        isCompleted && "opacity-60"
+      )}
+    >
+      {/* Left accent */}
+      <div className={cn("w-1 h-full absolute left-0 top-0 bottom-0 rounded-l-xl", pColor)} />
+
+      <div className="flex-1 ml-2">
+        <div className="flex items-start gap-3">
+          <div 
+            onClick={cycleStatus}
+            className={cn(
+              "w-5 h-5 rounded-full mt-0.5 flex items-center justify-center cursor-pointer transition-colors shrink-0",
+              task.status === 'done' ? "bg-emerald-500" :
+              task.status === 'in_progress' ? "border-2 border-indigo-500 bg-indigo-500/20" :
+              "border-2 border-[#3a3a3a] hover:border-indigo-500"
+            )}
+          >
+            {task.status === 'done' && <Check size={12} className="text-white" />}
+          </div>
+          
+          <div className="flex-1">
+            <h3 className={cn(
+              "text-sm font-semibold mb-2",
+              isCompleted ? "line-through text-neutral-500" : "text-white"
+            )}>
+              {task.title}
+            </h3>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <PriorityBadge priority={task.priority} />
+              
+              {task.due_date && (
+                <span className={cn(
+                  "text-xs font-medium",
+                  isOverdue ? "text-rose-400" : isToday(new Date(task.due_date)) ? "text-amber-400" : "text-neutral-500"
+                )}>
+                  {format(new Date(task.due_date), 'MMM d, yyyy')}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {isOverdue && (
+        <div className="absolute top-4 right-4 bg-rose-500/10 text-rose-400 text-[10px] uppercase font-bold px-2 py-0.5 rounded">
+          Overdue
+        </div>
+      )}
+    </div>
+  )
+}
