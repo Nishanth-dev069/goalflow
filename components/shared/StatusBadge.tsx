@@ -19,8 +19,8 @@ export function StatusBadge({ status, type = 'goal', className }: StatusBadgePro
       missed: { label: 'Missed', class: 'bg-rose-500/10 text-rose-400 border-rose-500/20' },
       default: { label: 'Unknown', class: 'bg-neutral-500/10 text-neutral-400 border-neutral-500/20' },
     }
-    const fallback = config.default
-    const entry = (status && config[status]) ? config[status] : fallback
+    const fallback = config.default!
+    const entry = (status && config[status]) ? config[status]! : fallback
 
     return (
       <div className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs border font-medium", entry.class, className)}>
@@ -38,8 +38,8 @@ export function StatusBadge({ status, type = 'goal', className }: StatusBadgePro
     cancelled: { label: 'Cancelled', class: 'text-rose-400 line-through' },
     default: { label: 'Unknown', class: 'text-neutral-400' },
   }
-  const fallback = config.default
-  const entry = (status && config[status]) ? config[status] : fallback
+  const fallback = config.default!
+  const entry = (status && config[status]) ? config[status]! : fallback
 
   return (
     <div className={cn("inline-flex items-center text-xs font-medium", entry.class, className)}>
