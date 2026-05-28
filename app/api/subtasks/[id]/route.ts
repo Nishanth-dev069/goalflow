@@ -12,11 +12,11 @@ export async function PATCH(
 
   try {
     const json = await request.json()
-    const { is_completed } = json
+    const { is_done } = json
 
     const { data, error } = await supabase
       .from('subtasks')
-      .update({ is_completed })
+      .update({ is_done })
       .eq('id', id)
       .select()
       .single()

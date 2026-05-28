@@ -21,6 +21,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
   return (
     <div 
       onClick={() => router.push(`/goals/${goal.id}`)}
+      onMouseEnter={() => router.prefetch(`/goals/${goal.id}`)}
       className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-5 hover:border-[#3a3a3a] transition-colors cursor-pointer flex flex-col h-full"
     >
       <div className="flex justify-between items-start mb-3">

@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Task } from '@/types'
-import { format, isPast, isToday } from 'date-fns'
-import { CheckCircle, ChevronRight, Check } from 'lucide-react'
+import { format } from 'date-fns'
+import { CheckSquare, CheckCircle, ChevronRight, Check } from 'lucide-react'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import Link from 'next/link'
 
 export function TodaysTasks({ initialData }: { initialData: Task[] }) {
   const router = useRouter()
@@ -26,7 +27,7 @@ export function TodaysTasks({ initialData }: { initialData: Task[] }) {
       return json.today_tasks as Task[]
     },
     initialData,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 30 * 1000,
   })
 
   const updateMutation = useMutation({
@@ -45,7 +46,6 @@ export function TodaysTasks({ initialData }: { initialData: Task[] }) {
       
       queryClient.setQueryData<Task[]>(['dashboard', 'today_tasks'], old => {
         if (!old) return old
-        // Optimistically remove from today if done, or update status
         return old.map(t => t.id === id ? { ...t, status: status as any } : t)
       })
       
@@ -63,7 +63,6 @@ export function TodaysTasks({ initialData }: { initialData: Task[] }) {
     }
   })
 
-  // Set up realtime subscription
   useEffect(() => {
     let mounted = true
     
@@ -76,7 +75,6 @@ export function TodaysTasks({ initialData }: { initialData: Task[] }) {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'tasks', filter: `assigned_to=eq.${session.user.id}` },
           (payload) => {
-            console.log('Realtime task update received!', payload)
             queryClient.invalidateQueries({ queryKey: ['dashboard', 'today_tasks'] })
             queryClient.invalidateQueries({ queryKey: ['dashboard'] })
           }
@@ -102,99 +100,104 @@ export function TodaysTasks({ initialData }: { initialData: Task[] }) {
   const overdueTasks = tasks.filter(t => t.is_overdue)
   const todayTasks = tasks.filter(t => !t.is_overdue)
 
-  const renderTask = (task: Task, isOverdue: boolean) => {
-    const isCompletedOptimistic = task.status === 'done'
-    const pColor = {
-      urgent: 'bg-rose-500',
-      high: 'bg-orange-500',
-      medium: 'bg-amber-500',
-      low: 'bg-emerald-500'
-    }[task.priority]
-
-    return (
-      <div key={task.id} className="relative flex items-center gap-3 py-3 group hover:bg-[#1a1a1a] rounded-lg transition-colors -mx-2 px-2 border-b border-[#1a1a1a] last:border-0">
-        <div className={cn("w-[3px] h-3/4 rounded-full absolute left-0", isOverdue ? "bg-rose-500" : pColor)} />
-        
-        <div 
-          onClick={() => {
-            if (!isCompletedOptimistic) updateMutation.mutate({ id: task.id, status: 'done' })
-          }}
-          className={cn(
-            "w-5 h-5 rounded-full flex items-center justify-center cursor-pointer transition-colors shrink-0",
-            isCompletedOptimistic 
-              ? "bg-emerald-500" 
-              : "border-2 border-[#3a3a3a] hover:border-indigo-500"
-          )}
-        >
-          {isCompletedOptimistic && <Check size={12} className="text-white" />}
-        </div>
-
-        <div className="flex-1 min-w-0 flex items-center gap-2">
-          <span className={cn(
-            "text-sm truncate transition-all",
-            isCompletedOptimistic ? "line-through text-neutral-500" : "text-white"
-          )}>
-            {task.title}
-          </span>
-          {isOverdue && !isCompletedOptimistic && (
-            <span className="shrink-0 bg-rose-500/10 text-rose-400 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">
-              Overdue
-            </span>
-          )}
-        </div>
-
-        <div className="hidden group-hover:flex items-center gap-2 shrink-0 animate-in fade-in slide-in-from-right-2">
-          <PriorityBadge priority={task.priority} className="text-[10px] py-0 border-0" />
-          <button 
-            onClick={(e) => { e.stopPropagation(); router.push(`/tasks/${task.id}`) }}
-            className="text-neutral-600 hover:text-neutral-400 transition-colors p-1"
-          >
-            <ChevronRight size={14} />
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-5">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center">
-          <h2 className="text-base font-semibold text-white">Today</h2>
-          <span className="text-sm text-neutral-500 ml-2">{format(new Date(), 'EEEE, MMM d')}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="bg-[#1a1a1a] text-xs text-neutral-400 px-2 py-0.5 rounded-md font-medium">
-            {tasks.length} tasks
+    <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-6">
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <div className="flex items-center gap-2">
+            <CheckSquare size={15} className="text-indigo-400" />
+            <h2 className="text-sm font-semibold text-white">Today's Tasks</h2>
+            <span className="bg-[#1a1a1a] text-xs text-neutral-500 px-1.5 py-0.5 rounded-md">{tasks.length}</span>
+            {isLive && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" title="Live updates" />}
           </div>
-          {isLive && (
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" title="Live updates active" />
-          )}
+          <p className="text-xs text-neutral-600 mt-0.5">{format(new Date(), 'EEEE, MMM d')}</p>
         </div>
+        <Link href="/tasks" className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">All tasks →</Link>
       </div>
 
-      <div className="space-y-1">
-        {overdueTasks.length > 0 && (
-          <div className="mb-4">
-            <h3 className="text-xs font-semibold text-rose-400 uppercase tracking-widest mb-2 mt-1">Overdue</h3>
-            {overdueTasks.map(t => renderTask(t, true))}
+      {overdueTasks.length > 0 && (
+        <div className="mb-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-red-400 mb-2">
+            Overdue · {overdueTasks.length}
+          </p>
+          <div className="bg-red-500/5 border border-red-500/10 rounded-xl overflow-hidden">
+            {overdueTasks.map(task => (
+              <TaskCheckRow 
+                key={task.id} 
+                task={task} 
+                onToggleDone={(id) => updateMutation.mutate({ id, status: task.status === 'done' ? 'todo' : 'done' })}
+                router={router}
+              />
+            ))}
           </div>
+        </div>
+      )}
+
+      {todayTasks.length > 0 ? (
+        <div className="divide-y divide-[#1a1a1a]">
+          {todayTasks.map(task => (
+            <TaskCheckRow 
+              key={task.id} 
+              task={task} 
+              onToggleDone={(id) => updateMutation.mutate({ id, status: task.status === 'done' ? 'todo' : 'done' })}
+              router={router}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center py-10">
+          <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center mb-3">
+            <CheckCircle size={24} className="text-green-500" />
+          </div>
+          <p className="text-sm font-semibold text-white">All clear!</p>
+          <p className="text-xs text-neutral-600 mt-1">No tasks due today</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TaskCheckRow({ task, onToggleDone, router }: { task: Task, onToggleDone: (id: string) => void, router: any }) {
+  const isDone = task.status === 'done'
+  return (
+    <div 
+      className="flex items-center gap-3 py-3 px-1 group"
+      onMouseEnter={() => router.prefetch(`/tasks/${task.id}`)}
+    >
+      <div className={cn("w-0.5 h-8 rounded-full flex-shrink-0", {
+        'bg-red-500': task.priority === 'urgent',
+        'bg-orange-500': task.priority === 'high',
+        'bg-amber-500': task.priority === 'medium',
+        'bg-green-500': task.priority === 'low',
+      })} />
+
+      <button
+        onClick={() => onToggleDone(task.id)}
+        className={cn(
+          "w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all",
+          isDone ? "bg-green-500 border-green-500" : "border-[#3a3a3a] hover:border-indigo-500"
         )}
+      >
+        {isDone && <Check size={10} className="text-white" />}
+      </button>
 
-        {todayTasks.length > 0 ? (
-          <div>
-            {todayTasks.map(t => renderTask(t, false))}
-          </div>
-        ) : tasks.length === 0 ? (
-          <div className="flex flex-col items-center py-12">
-            <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mb-3">
-              <CheckCircle className="text-emerald-500" size={24} />
-            </div>
-            <p className="text-sm font-medium text-white">You're all caught up</p>
-            <p className="text-xs text-neutral-500 mt-1">No tasks due today</p>
-          </div>
-        ) : null}
-      </div>
+      <Link href={`/tasks/${task.id}`} className="flex-1 min-w-0">
+        <span className={cn(
+          "text-sm text-white truncate block transition-all",
+          isDone && "line-through text-neutral-600"
+        )}>
+          {task.title}
+        </span>
+        {task.subtasks && task.subtasks.length > 0 && (
+          <span className="text-[10px] text-neutral-600">
+            {task.subtasks.filter(s => s.is_done).length}/{task.subtasks.length} subtasks
+          </span>
+        )}
+      </Link>
+
+      <PriorityBadge priority={task.priority} className="opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block" />
+
+      <ChevronRight size={12} className="text-neutral-700 group-hover:text-neutral-500 flex-shrink-0" />
     </div>
   )
 }

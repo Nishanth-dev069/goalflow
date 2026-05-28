@@ -83,14 +83,14 @@ export function useUpdateGoal() {
   })
 }
 
-export function useArchiveGoal() {
+export function useDeleteGoal() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/goals/${id}`, { method: 'DELETE' })
       if (!res.ok) {
         const error = await res.json()
-        throw new Error(error.error || 'Failed to archive goal')
+        throw new Error(error.error || 'Failed to delete goal')
       }
       return res.json()
     },

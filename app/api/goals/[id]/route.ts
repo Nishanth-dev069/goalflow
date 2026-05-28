@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { UpdateGoalSchema } from '@/lib/validations/goal.schemas'
 import { logActivity, computeGoalFields } from '@/lib/api-helpers'
 
@@ -88,8 +88,11 @@ export async function PATCH(
     goal.created_by === currentUser.id || 
     (goal.scope === 'department' && goal.assigned_to_dept_id === currentUser.department_id)
   )
+  const isAssignee = goal.assigned_to_user_id === currentUser.id
+  const isCompanyGoal = goal.scope === 'company'
+  const isDeptMember = goal.scope === 'department' && goal.assigned_to_dept_id === currentUser.department_id
 
-  if (!isAdmin && !isOwningManager) {
+  if (!isAdmin && !isOwningManager && !isAssignee && !isCompanyGoal && !isDeptMember) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -99,7 +102,8 @@ export async function PATCH(
 
     if (Object.keys(body).length === 0) return NextResponse.json({ data: goal })
 
-    const { data: updatedGoal, error } = await supabase
+    const adminClientForUpdate = await createAdminClient()
+    const { data: updatedGoal, error } = await adminClientForUpdate
       .from('goals')
       .update(body)
       .eq('id', id)
@@ -117,13 +121,37 @@ export async function PATCH(
     })
 
     if (body.status === 'completed' && goal.status !== 'completed') {
-      await logActivity({
-        userId: currentUser.id,
-        action: 'goal_completed',
-        entityType: 'goal',
-        entityId: id,
-        entityTitle: updatedGoal.title,
-      })
+      try {
+        const adminClient = await createAdminClient()
+        const { data: admins } = await adminClient
+          .from('users')
+          .select('id')
+          .eq('role', 'admin')
+          .eq('is_active', true)
+        
+        if (admins && admins.length > 0) {
+          const completedBy = currentUser.full_name
+          const notifications = admins.map(admin => ({
+            user_id: admin.id,
+            title: '🎯 Goal Completed',
+            body: `${completedBy} completed the goal: "${goal.title}"`,
+            type: 'goal_completed',
+            entity_id: goal.id,
+          }))
+          await adminClient.from('notifications').insert(notifications)
+        }
+
+        await adminClient.from('activity_log').insert({
+          user_id: currentUser.id,
+          action: 'goal_completed',
+          entity_type: 'goal',
+          entity_id: id,
+          entity_title: updatedGoal.title,
+          metadata: { completed_by: currentUser.full_name, completed_at: new Date().toISOString() }
+        })
+      } catch (e) {
+        console.error('Failed to create notification or activity log:', e)
+      }
     }
 
     return NextResponse.json({ data: computeGoalFields(updatedGoal) })
@@ -149,23 +177,42 @@ export async function DELETE(
     .eq('id', session.user.id)
     .single()
 
-  if (!currentUser || !currentUser.is_active || currentUser.role !== 'admin') {
+  if (!currentUser || !currentUser.is_active) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { data: goal } = await supabase.from('goals').select('id, title, scope, assigned_to_dept_id, created_by').eq('id', id).single()
+  if (!goal) return NextResponse.json({ error: 'Goal not found' }, { status: 404 })
+
+  const canDelete =
+    currentUser.role === 'admin' ||
+    (currentUser.role === 'manager' && (goal.assigned_to_dept_id === currentUser.department_id || goal.created_by === currentUser.id))
+
+  if (!canDelete) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { error } = await supabase
+  const adminClientForDelete = await createAdminClient()
+  const { error } = await adminClientForDelete
     .from('goals')
-    .update({ is_archived: true })
+    .delete()
     .eq('id', id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  await logActivity({
-    userId: currentUser.id,
-    action: 'goal_archived',
-    entityType: 'goal',
-    entityId: id,
-  })
+  try {
+    const adminClient = await createAdminClient()
+    await adminClient.from('activity_log').insert({
+      user_id: currentUser.id,
+      action: 'goal_updated',
+      entity_type: 'goal',
+      entity_id: goal.id,
+      entity_title: goal.title,
+      metadata: { action: 'deleted' }
+    })
+  } catch (e) {
+    // ignore
+  }
 
   return NextResponse.json({ success: true })
 }

@@ -25,6 +25,7 @@ export interface Goal {
   type: GoalType;
   target_value: number | null;
   current_value: number;
+  unit: string | null;
   progress: number;
   created_by: string;
   assigned_to_user_id: string | null;
@@ -62,6 +63,7 @@ export interface Task {
   assigned_by: string;
   due_date: string | null;
   is_archived: boolean;
+  tags?: string[];
   created_at: string;
   updated_at: string;
 
@@ -70,13 +72,15 @@ export interface Task {
 
   // Joined relations
   assignee?: { id: string; full_name: string; avatar_url: string | null; department?: { id: string; name: string; } | null; } | null;
+  subtasks?: Subtask[];
+  comments_count?: number;
 }
 
 export interface Subtask {
   id: string;
   task_id: string;
   title: string;
-  is_completed: boolean;
+  is_done: boolean;
   position: number;
   created_at: string;
   updated_at: string;

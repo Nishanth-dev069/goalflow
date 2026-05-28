@@ -327,7 +327,7 @@ export default function TasksManagementPage() {
                           {isOverdue && <span className="bg-orange-500/10 text-orange-400 border border-orange-500/20 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">Overdue</span>}
                           <div 
                             className="text-sm text-white font-medium hover:text-indigo-400 cursor-pointer transition-colors"
-                            onClick={() => router.push(`/admin/tasks/${task.id}`)}
+                            onClick={() => router.push(`/tasks/${task.id}`)}
                           >
                             {task.title}
                           </div>
@@ -356,7 +356,7 @@ export default function TasksManagementPage() {
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button 
-                            onClick={() => router.push(`/admin/tasks/${task.id}`)}
+                            onClick={() => router.push(`/tasks/${task.id}`)}
                             className="text-neutral-400 hover:text-white text-sm transition-colors"
                           >
                             Edit

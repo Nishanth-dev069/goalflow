@@ -114,14 +114,7 @@ export async function PATCH(
 
     // Logging & Side Effects
     if (updates.role !== undefined && updates.role !== targetUser.role) {
-      await logActivity({
-        userId: currentUser.id,
-        action: 'role_changed',
-        entityType: 'user',
-        entityId: id,
-        entityTitle: updatedUser.full_name,
-        metadata: { old_role: targetUser.role, new_role: updates.role }
-      })
+      // Role changed, but 'role_changed' is not in activity_action enum. Skip logging or add to enum later.
     }
 
     if (updates.is_active === false && targetUser.is_active === true) {

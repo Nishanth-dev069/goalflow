@@ -52,6 +52,7 @@ export function TaskCard({ task }: { task: Task }) {
   return (
     <div 
       onClick={() => router.push(`/tasks/${task.id}`)}
+      onMouseEnter={() => router.prefetch(`/tasks/${task.id}`)}
       className={cn(
         "bg-[#111111] border border-[#2a2a2a] rounded-xl p-4 hover:border-[#3a3a3a] transition-all cursor-pointer relative group flex",
         isCompleted && "opacity-60"

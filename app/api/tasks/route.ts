@@ -37,10 +37,10 @@ export async function GET(request: Request) {
     let query = supabase
       .from('tasks')
       .select(`
-        *,
-        assignee:users!tasks_assigned_to_fkey(id, full_name, avatar_url, department_id),
+        id, title, status, priority, due_date, assigned_to, assigned_by, created_at, updated_at, description, tags, is_archived,
+        assignee:users!tasks_assigned_to_fkey!inner(id, full_name, avatar_url, department_id),
         assigner:users!tasks_assigned_by_fkey(id, full_name, avatar_url),
-        subtasks(*),
+        subtasks(id, title, is_done, position),
         task_comments(count)
       `, { count: 'exact' })
       .eq('is_archived', false)
@@ -83,7 +83,7 @@ export async function GET(request: Request) {
 
     const processedData = data.map(t => {
       const comments_count = t.task_comments?.[0]?.count || 0
-      delete t.task_comments
+      delete (t as any).task_comments
       return computeTaskFields({ ...t, comments_count })
     })
 

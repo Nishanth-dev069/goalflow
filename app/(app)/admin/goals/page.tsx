@@ -8,7 +8,7 @@ import { ScopeBadge } from '@/components/shared/ScopeBadge'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { EmptyState } from '@/components/shared/EmptyState'
-import { useGoals, useUpdateGoal, useArchiveGoal } from '@/lib/queries/goals'
+import { useGoals, useUpdateGoal, useDeleteGoal } from '@/lib/queries/goals'
 import { Goal } from '@/types'
 import { Search, MoreVertical, Plus, Target, CheckCircle2, Clock } from 'lucide-react'
 import { format, formatDistanceToNow, isPast } from 'date-fns'
@@ -33,7 +33,7 @@ export default function GoalsManagementPage() {
   const goals: Goal[] = goalsResponse?.data || []
   
   const updateMutation = useUpdateGoal()
-  const archiveMutation = useArchiveGoal()
+  const deleteMutation = useDeleteGoal()
 
   const tabs = [
     { id: 'all', label: 'All' },
@@ -71,10 +71,10 @@ export default function GoalsManagementPage() {
     })
   }
 
-  const handleArchive = (id: string) => {
-    if (confirm('Are you sure you want to archive this goal?')) {
-      archiveMutation.mutate(id, {
-        onSuccess: () => toast.success('Goal archived'),
+  const handleDelete = (id: string) => {
+    if (confirm('Are you sure you want to delete this goal?')) {
+      deleteMutation.mutate(id, {
+        onSuccess: () => toast.success('Goal deleted'),
         onError: (err) => toast.error(err.message)
       })
     }
@@ -298,8 +298,8 @@ export default function GoalsManagementPage() {
                           {goal.status !== 'completed' && <DropdownMenuItem onClick={() => handleStatusChange(goal.id, 'completed')}>Mark Completed</DropdownMenuItem>}
                           {(goal.status as string) !== 'paused' && <DropdownMenuItem onClick={() => handleStatusChange(goal.id, 'paused')}>Pause Goal</DropdownMenuItem>}
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleArchive(goal.id)} className="text-rose-400 focus:text-rose-400 focus:bg-rose-500/10">
-                            Archive Goal
+                          <DropdownMenuItem onClick={() => handleDelete(goal.id)} className="text-rose-400 focus:text-rose-400 focus:bg-rose-500/10">
+                            Delete Goal
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

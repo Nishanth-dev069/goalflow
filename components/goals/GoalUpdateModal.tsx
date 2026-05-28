@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { Goal } from '@/types'
-import { useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { X, Loader2, Target } from 'lucide-react'
 
@@ -23,35 +23,58 @@ export function GoalUpdateModal({
 
   if (!isOpen) return null
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-
-    try {
-      // Create update via custom API endpoint that logs update and increments current_value
+  const mutation = useMutation({
+    mutationFn: async (data: { new_value: number, note: string }) => {
       const res = await fetch(`/api/goals/${goal.id}/update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          new_value: newValue,
-          note
-        })
+        body: JSON.stringify(data)
       })
-
       if (!res.ok) {
-        const err = await res.json()
+        const err = await res.json().catch(() => ({}))
         throw new Error(err.error || 'Failed to update progress')
       }
-
-      toast.success('Progress updated successfully')
+      return res.json()
+    },
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: ['goals', goal.id] })
+      await queryClient.cancelQueries({ queryKey: ['dashboard'] })
+      
+      const prevGoal = queryClient.getQueryData(['goals', goal.id])
+      const prevDashboard = queryClient.getQueryData(['dashboard'])
+      
+      queryClient.setQueryData(['goals', goal.id], (old: any) => {
+        if (!old || !old.data) return old
+        const progress_percentage = old.data.target_value 
+          ? Math.min(100, Math.max(0, Math.round((variables.new_value / old.data.target_value) * 100))) 
+          : 0
+        return {
+          ...old,
+          data: { ...old.data, current_value: variables.new_value, progress_percentage }
+        }
+      })
+      
+      return { prevGoal, prevDashboard }
+    },
+    onError: (err, variables, context) => {
+      if (context?.prevGoal) queryClient.setQueryData(['goals', goal.id], context.prevGoal)
+      if (context?.prevDashboard) queryClient.setQueryData(['dashboard'], context.prevDashboard)
+      toast.error(err.message)
+    },
+    onSuccess: (data, variables) => {
+      toast.success('Progress saved', { description: `Now at ${variables.new_value} ${goal.unit || ''}` })
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['goals', goal.id] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      onClose()
-    } catch (error: any) {
-      toast.error(error.message)
-    } finally {
-      setIsSubmitting(false)
     }
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (newValue === goal.current_value) return
+    mutation.mutate({ new_value: newValue, note })
+    onClose()
   }
 
   return (
@@ -116,10 +139,10 @@ export function GoalUpdateModal({
           <div className="mt-auto p-6 border-t border-[#2a2a2a] bg-[#0a0a0a]">
             <button
               type="submit"
-              disabled={isSubmitting || newValue === goal.current_value}
+              disabled={mutation.isPending || newValue === goal.current_value}
               className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-neutral-800 disabled:text-neutral-500 text-white h-12 text-sm font-medium rounded-xl transition-colors flex items-center justify-center"
             >
-              {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : 'Save Update'}
+              {mutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Save Update'}
             </button>
           </div>
         </form>

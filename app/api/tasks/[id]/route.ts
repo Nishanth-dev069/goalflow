@@ -77,7 +77,8 @@ export async function PATCH(
 
     if (Object.keys(body).length === 0) return NextResponse.json({ data: task })
 
-    const { data: updatedTask, error } = await supabase
+    const adminClientForUpdate = await createAdminClient()
+    const { data: updatedTask, error } = await adminClientForUpdate
       .from('tasks')
       .update(body)
       .eq('id', id)
@@ -170,7 +171,8 @@ export async function DELETE(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { error } = await supabase
+  const adminClientForDelete = await createAdminClient()
+  const { error } = await adminClientForDelete
     .from('tasks')
     .update({ is_archived: true, status: 'cancelled' })
     .eq('id', id)

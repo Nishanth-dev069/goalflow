@@ -5,21 +5,23 @@ import { Check } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useRouter } from 'next/navigation'
 
 export function SubtaskList({ taskId, subtasks, canEdit }: { taskId: string, subtasks: any[], canEdit: boolean }) {
   const queryClient = useQueryClient()
+  const router = useRouter()
 
   const toggleMutation = useMutation({
-    mutationFn: async ({ id, is_completed }: { id: string, is_completed: boolean }) => {
+    mutationFn: async ({ id, is_done }: { id: string, is_done: boolean }) => {
       const res = await fetch(`/api/subtasks/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_completed })
+        body: JSON.stringify({ is_done })
       })
       if (!res.ok) throw new Error('Failed to toggle subtask')
       return res.json()
     },
-    onMutate: async ({ id, is_completed }) => {
+    onMutate: async ({ id, is_done }) => {
       await queryClient.cancelQueries({ queryKey: ['tasks', taskId] })
       const prev = queryClient.getQueryData(['tasks', taskId])
       
@@ -29,7 +31,7 @@ export function SubtaskList({ taskId, subtasks, canEdit }: { taskId: string, sub
           ...old,
           data: {
             ...old.data,
-            subtasks: old.data.subtasks.map((st: any) => st.id === id ? { ...st, is_completed } : st)
+            subtasks: old.data.subtasks.map((st: any) => st.id === id ? { ...st, is_done } : st)
           }
         }
       })
@@ -41,6 +43,7 @@ export function SubtaskList({ taskId, subtasks, canEdit }: { taskId: string, sub
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks', taskId] })
+      router.refresh()
     }
   })
 
@@ -54,18 +57,18 @@ export function SubtaskList({ taskId, subtasks, canEdit }: { taskId: string, sub
           <div key={sub.id} className="flex items-center gap-3 bg-[#111111] border border-[#2a2a2a] p-3 rounded-lg">
             <button
               disabled={!canEdit || toggleMutation.isPending}
-              onClick={() => canEdit && toggleMutation.mutate({ id: sub.id, is_completed: !sub.is_completed })}
+              onClick={() => canEdit && toggleMutation.mutate({ id: sub.id, is_done: !sub.is_done })}
               className={cn(
                 "w-5 h-5 rounded flex items-center justify-center shrink-0 transition-colors border",
-                sub.is_completed 
+                sub.is_done 
                   ? "bg-indigo-600 border-indigo-600" 
                   : "border-[#4a4a4a] hover:border-indigo-500",
                 !canEdit && "opacity-50 cursor-not-allowed"
               )}
             >
-              {sub.is_completed && <Check size={12} className="text-white" />}
+              {sub.is_done && <Check size={12} className="text-white" />}
             </button>
-            <span className={cn("text-sm transition-colors", sub.is_completed ? "text-neutral-500 line-through" : "text-white")}>
+            <span className={cn("text-sm transition-colors", sub.is_done ? "text-neutral-500 line-through" : "text-white")}>
               {sub.title}
             </span>
           </div>

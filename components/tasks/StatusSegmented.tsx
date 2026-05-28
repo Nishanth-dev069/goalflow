@@ -3,6 +3,7 @@
 import React from 'react'
 import { TaskStatus } from '@/types'
 import { cn } from '@/lib/utils'
+import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
@@ -22,6 +23,7 @@ const segments: { id: TaskStatus; label: string; color: string }[] = [
 
 export function StatusSegmented({ taskId, currentStatus, canEdit }: Props) {
   const queryClient = useQueryClient()
+  const router = useRouter()
 
   const updateMutation = useMutation({
     mutationFn: async (status: TaskStatus) => {
@@ -53,6 +55,7 @@ export function StatusSegmented({ taskId, currentStatus, canEdit }: Props) {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
       queryClient.invalidateQueries({ queryKey: ['task_history', taskId] })
+      router.refresh()
     }
   })
 

@@ -5,8 +5,8 @@ import { headers } from 'next/headers'
 import { TodaysTasks } from '@/components/dashboard/TodaysTasks'
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed'
 import { MyGoalsPanel } from '@/components/dashboard/MyGoalsPanel'
-import { CompanyGoalsPanel } from '@/components/dashboard/CompanyGoalsPanel'
-import { PrivateGoalsSection } from '@/components/goals/PrivateGoalsSection'
+import { CompanyGoalsHero } from '@/components/dashboard/CompanyGoalsHero'
+import { PrivateGoalsDashboardSection } from '@/components/dashboard/PrivateGoalsDashboardSection'
 import { QuoteBanner } from '@/components/dashboard/QuoteBanner'
 
 async function getDashboardData() {
@@ -17,7 +17,6 @@ async function getDashboardData() {
     redirect('/login')
   }
 
-  // Fetch from the API using absolute URL and passing along cookies
   const headersList = await headers()
   const host = headersList.get('host')
   const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https'
@@ -33,11 +32,20 @@ async function getDashboardData() {
     throw new Error('Failed to fetch dashboard data')
   }
 
-  return res.json()
+  const data = await res.json()
+  return { data, user: session.user }
 }
 
 export default async function DashboardPage() {
-  const data = await getDashboardData()
+  const { data, user } = await getDashboardData()
+  
+  // We need to fetch full user info to get the role if it's not in the auth session
+  const supabase = await createClient()
+  const { data: currentUser } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', user.id)
+    .single()
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto min-h-screen pb-32">
@@ -46,34 +54,21 @@ export default async function DashboardPage() {
         <p className="text-neutral-400 mt-1">Here's what's happening with your goals and tasks today.</p>
       </div>
 
-      <QuoteBanner stats={data.stats} />
+      <div className="space-y-8">
+        <QuoteBanner stats={data.stats} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Left Column: Tasks + Activity */}
-        <div className="lg:col-span-3 space-y-6">
-          <Suspense fallback={<div className="h-[400px] bg-[#111111] border border-[#2a2a2a] rounded-xl animate-pulse" />}>
-            <TodaysTasks initialData={data.today_tasks} />
-          </Suspense>
+        {data.company_goals && data.company_goals.length > 0 && (
+          <CompanyGoalsHero goals={data.company_goals} currentUser={currentUser} />
+        )}
 
-          <Suspense fallback={<div className="h-[400px] bg-[#111111] border border-[#2a2a2a] rounded-xl animate-pulse" />}>
-            <ActivityFeed initialData={data.activity_feed} />
-          </Suspense>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <MyGoalsPanel goals={data.my_goals || []} currentUser={currentUser} />
+          <TodaysTasks initialData={data.today_tasks || []} />
         </div>
 
-        {/* Right Column: Goals */}
-        <div className="lg:col-span-2 space-y-6">
-          <Suspense fallback={<div className="h-[300px] bg-[#111111] border border-[#2a2a2a] rounded-xl animate-pulse" />}>
-            <MyGoalsPanel initialData={data.my_goals} />
-          </Suspense>
+        <PrivateGoalsDashboardSection userId={user.id} />
 
-          <Suspense fallback={<div className="h-[300px] bg-[#111111] border border-[#2a2a2a] rounded-xl animate-pulse" />}>
-            <CompanyGoalsPanel initialData={data.company_goals} />
-          </Suspense>
-
-          <Suspense fallback={<div className="h-[300px] bg-[#111111] border border-[#2a2a2a] rounded-xl animate-pulse" />}>
-            <PrivateGoalsSection />
-          </Suspense>
-        </div>
+        <ActivityFeed initialData={data.activity_feed || []} />
       </div>
     </div>
   )

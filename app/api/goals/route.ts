@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     let query = supabase
       .from('goals')
       .select(`
-        *,
+        id, title, type, scope, status, target_value, current_value, unit, start_date, end_date, is_archived, is_private, assigned_to_user_id, assigned_to_dept_id, created_by, created_at, updated_at, description,
         assigned_user:users!goals_assigned_to_user_id_fkey(id, full_name, avatar_url),
         assigned_dept:departments!goals_assigned_to_dept_id_fkey(id, name),
         creator:users!goals_created_by_fkey(id, full_name)

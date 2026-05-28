@@ -18,6 +18,14 @@ export const metadata: Metadata = {
   description: "Internal goal tracking",
   robots: "noindex,nofollow",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "GoalFlow",
+  },
+  icons: {
+    apple: "/icon-192x192.png",
+  },
 };
 
 export const viewport = {

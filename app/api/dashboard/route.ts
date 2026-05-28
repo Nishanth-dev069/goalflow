@@ -38,10 +38,10 @@ export async function GET() {
       supabase
         .from('tasks')
         .select(`
-          *,
+          id, title, status, priority, due_date, assigned_to, created_at, updated_at,
           assignee:users!tasks_assigned_to_fkey(id, full_name, avatar_url),
           assigner:users!tasks_assigned_by_fkey(id, full_name, avatar_url),
-          subtasks(*)
+          subtasks(id, title, is_done)
         `)
         .eq('assigned_to', uid)
         .eq('due_date', today)
@@ -52,7 +52,7 @@ export async function GET() {
       supabase
         .from('goals')
         .select(`
-          *,
+          id, title, type, scope, status, target_value, current_value, unit, start_date, end_date, is_archived, is_private, assigned_to_user_id, assigned_to_dept_id, created_by, created_at, updated_at, description,
           creator:users!goals_created_by_fkey(id, full_name),
           assigned_dept:departments!goals_assigned_to_dept_id_fkey(id, name)
         `)
@@ -65,7 +65,7 @@ export async function GET() {
       supabase
         .from('goals')
         .select(`
-          *,
+          id, title, type, scope, status, target_value, current_value, unit, start_date, end_date, is_archived, is_private, assigned_to_user_id, assigned_to_dept_id, created_by, created_at, updated_at, description,
           creator:users!goals_created_by_fkey(id, full_name)
         `)
         .eq('scope', 'company')
@@ -78,7 +78,7 @@ export async function GET() {
       supabase
         .from('activity_log')
         .select(`
-          *,
+          id, action, entity_type, entity_title, entity_id, created_at, metadata,
           user:users!activity_log_user_id_fkey(id, full_name, avatar_url)
         `)
         .eq('user_id', uid)
