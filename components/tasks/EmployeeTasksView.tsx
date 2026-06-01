@@ -6,8 +6,13 @@ import { TaskCard } from '@/components/tasks/TaskCard'
 import { useTasks } from '@/lib/queries/tasks'
 import { isPast, isToday, isThisWeek } from 'date-fns'
 import { Loader2 } from 'lucide-react'
+import { useQueryState } from 'nuqs'
+import { TasksViewSwitcher } from './TasksViewSwitcher'
+import { KanbanBoardView } from './KanbanBoardView'
+import { CalendarView } from './CalendarView'
 
 export function EmployeeTasksView() {
+  const [view] = useQueryState('view', { defaultValue: 'list' })
   const { data, isLoading } = useTasks({ page: 1 })
   const tasks: Task[] = data?.data || []
   
@@ -70,26 +75,36 @@ export function EmployeeTasksView() {
   }
 
   return (
-    <div className="pb-32">
-      {renderGroup('Overdue', overdue, true)}
-      {renderGroup('Today', today)}
-      {renderGroup('This Week', thisWeek)}
-      {renderGroup('Later', later)}
+    <div className="pb-32 space-y-6">
+      <TasksViewSwitcher />
 
-      <div className="mt-8 border-t border-[#1a1a1a] pt-6">
-        <button 
-          onClick={() => setShowCompleted(!showCompleted)}
-          className="text-sm font-medium text-neutral-400 hover:text-white transition-colors"
-        >
-          {showCompleted ? 'Hide' : 'Show'} completed tasks ({completed.length})
-        </button>
+      {view === 'board' && <KanbanBoardView tasks={tasks} />}
+      
+      {view === 'calendar' && <CalendarView tasks={tasks} />}
+      
+      {(view === 'list' || !view) && (
+        <div>
+          {renderGroup('Overdue', overdue, true)}
+          {renderGroup('Today', today)}
+          {renderGroup('This Week', thisWeek)}
+          {renderGroup('Later', later)}
 
-        {showCompleted && (
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {completed.map(t => <TaskCard key={t.id} task={t} />)}
+          <div className="mt-8 border-t border-[#1a1a1a] pt-6">
+            <button 
+              onClick={() => setShowCompleted(!showCompleted)}
+              className="text-sm font-medium text-neutral-400 hover:text-white transition-colors"
+            >
+              {showCompleted ? 'Hide' : 'Show'} completed tasks ({completed.length})
+            </button>
+
+            {showCompleted && (
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {completed.map(t => <TaskCard key={t.id} task={t} />)}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

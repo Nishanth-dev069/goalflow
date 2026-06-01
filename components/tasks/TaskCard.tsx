@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react'
 import { Task } from '@/types'
-import { Check, Loader2, ArrowRight } from 'lucide-react'
+import { Check, Loader2, ArrowRight, Lock, Repeat } from 'lucide-react'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
-import { format, isPast, isToday } from 'date-fns'
+import { isPast, isToday } from 'date-fns'
+import { formatDateIST } from '@/lib/utils/dates'
 import { cn } from '@/lib/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -46,6 +47,12 @@ export function TaskCard({ task }: { task: Task }) {
   const cycleStatus = (e: React.MouseEvent) => {
     e.stopPropagation()
     const next = task.status === 'todo' ? 'in_progress' : task.status === 'in_progress' ? 'done' : 'todo'
+    
+    if (next === 'in_progress' && task.is_blocked) {
+      toast.error('Cannot start task: it is blocked by dependencies')
+      return
+    }
+
     updateMutation.mutate(next)
   }
 
@@ -63,16 +70,17 @@ export function TaskCard({ task }: { task: Task }) {
 
       <div className="flex-1 ml-2">
         <div className="flex items-start gap-3">
-          <div 
-            onClick={cycleStatus}
-            className={cn(
-              "w-5 h-5 rounded-full mt-0.5 flex items-center justify-center cursor-pointer transition-colors shrink-0",
-              task.status === 'done' ? "bg-emerald-500" :
-              task.status === 'in_progress' ? "border-2 border-indigo-500 bg-indigo-500/20" :
-              "border-2 border-[#3a3a3a] hover:border-indigo-500"
-            )}
-          >
-            {task.status === 'done' && <Check size={12} className="text-white" />}
+          <div className="p-2 -m-2 z-10" onClick={cycleStatus}>
+            <div 
+              className={cn(
+                "w-5 h-5 rounded-full mt-0.5 flex items-center justify-center cursor-pointer transition-colors shrink-0",
+                task.status === 'done' ? "bg-emerald-500" :
+                task.status === 'in_progress' ? "border-2 border-indigo-500 bg-indigo-500/20" :
+                "border-2 border-[#3a3a3a] hover:border-indigo-500"
+              )}
+            >
+              {task.status === 'done' && <Check size={12} className="text-white" />}
+            </div>
           </div>
           
           <div className="flex-1">
@@ -91,7 +99,18 @@ export function TaskCard({ task }: { task: Task }) {
                   "text-xs font-medium",
                   isOverdue ? "text-rose-400" : isToday(new Date(task.due_date)) ? "text-amber-400" : "text-neutral-500"
                 )}>
-                  {format(new Date(task.due_date), 'MMM d, yyyy')}
+                  {formatDateIST(task.due_date, 'MMM d, yyyy')}
+                </span>
+              )}
+
+              {task.is_blocked && (
+                <span className="flex items-center gap-1 text-[10px] uppercase font-bold text-orange-400 bg-orange-500/10 px-1.5 py-0.5 rounded">
+                  <Lock size={10} /> Blocked
+                </span>
+              )}
+              {task.recurrence && (
+                <span className="flex items-center gap-1 text-[10px] uppercase font-bold text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded" title={`Repeats ${task.recurrence}`}>
+                  <Repeat size={10} />
                 </span>
               )}
             </div>

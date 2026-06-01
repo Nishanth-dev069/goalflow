@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { format, subDays } from 'date-fns'
-import { CheckCircle, TrendingUp, TrendingDown, Minus, AlertTriangle, Loader2, ArrowRight } from 'lucide-react'
+import { CheckCircle, TrendingUp, TrendingDown, Minus, AlertTriangle, Loader2, ArrowRight, Download, Clock } from 'lucide-react'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { PriorityBadge } from '@/components/shared/PriorityBadge'
 import { cn } from '@/lib/utils'
@@ -36,6 +36,31 @@ export default function AdminAnalyticsPage() {
     },
     staleTime: 1000 * 60 * 2 // 2 mins
   })
+
+  const { data: timeReport, isLoading: loadingTime } = useQuery({
+    queryKey: ['analytics', 'time', from, to],
+    queryFn: async () => {
+      const res = await fetch(`/api/time/report?from=${from}&to=${to}`)
+      if (!res.ok) throw new Error('Failed to fetch time report')
+      const json = await res.json()
+      return json.data
+    },
+    staleTime: 1000 * 60 * 2
+  })
+
+  const exportToCSV = () => {
+    if (!timeReport?.hours_by_task) return
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + "Task Title,Hours Logged\n"
+      + timeReport.hours_by_task.map((t: any) => `"${t.taskTitle.replace(/"/g, '""')}",${t.hours}`).join("\n")
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    link.setAttribute("download", `time_report_${from}_to_${to}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
   // Destructure with fallbacks
   const data = response || {
@@ -373,6 +398,92 @@ export default function AdminAnalyticsPage() {
               </div>
             )}
           </div>
+
+          {/* ROW 5: TIME TRACKING */}
+          {loadingTime ? (
+            <div className="flex items-center justify-center py-16"><Loader2 className="animate-spin text-neutral-600 w-8 h-8" /></div>
+          ) : timeReport ? (
+            <div className="pt-8">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+                    <Clock size={20} className="text-indigo-400" /> Time Tracking
+                  </h2>
+                  <p className="text-sm text-neutral-400 mt-1">Hours logged across the team</p>
+                </div>
+                <button
+                  onClick={exportToCSV}
+                  className="flex items-center gap-2 bg-[#1a1a1a] hover:bg-[#2a2a2a] border border-[#3a3a3a] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  <Download size={14} /> Export CSV
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {/* Total Hours Card */}
+                <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-6 flex flex-col justify-center">
+                  <div className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-2">Total Hours Logged</div>
+                  <div className="text-5xl font-bold text-white">{timeReport.total_hours}</div>
+                  <div className="text-sm text-neutral-500 mt-2">During this period</div>
+                </div>
+
+                {/* Hours By Employee */}
+                <div className="col-span-1 lg:col-span-2 bg-[#111111] border border-[#2a2a2a] rounded-xl p-6 overflow-hidden">
+                  <h3 className="text-sm font-semibold text-white mb-6">Hours by Employee</h3>
+                  <div style={{ height: Math.max(160, timeReport.hours_by_employee.length * 44) }}>
+                    {timeReport.hours_by_employee.length === 0 ? (
+                      <div className="w-full h-full flex items-center justify-center text-sm text-neutral-600">No time logged.</div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart layout="vertical" data={timeReport.hours_by_employee} margin={{ left: 0, right: 30 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" horizontal={false} />
+                          <XAxis type="number" tick={{ fontSize: 12, fill: '#666' }} axisLine={false} />
+                          <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12, fill: '#a1a1a1' }} axisLine={false} tickLine={false} />
+                          <RechartsTooltip 
+                            contentStyle={{ backgroundColor: '#1a1a1a', borderColor: '#2a2a2a', borderRadius: '8px' }}
+                            itemStyle={{ color: '#fff' }}
+                            cursor={{ fill: '#1a1a1a' }}
+                          />
+                          <Bar dataKey="hours" name="Hours" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+                </div>
+
+                {/* Hours By Task (Table) */}
+                <div className="col-span-1 lg:col-span-3 bg-[#111111] border border-[#2a2a2a] rounded-xl overflow-hidden mt-2">
+                  <div className="p-6 pb-4 border-b border-[#2a2a2a]">
+                    <h3 className="text-sm font-semibold text-white">Hours by Task</h3>
+                  </div>
+                  <div className="overflow-x-auto max-h-[400px]">
+                    <table className="w-full text-left border-collapse min-w-[500px]">
+                      <thead className="sticky top-0 bg-[#0a0a0a]">
+                        <tr>
+                          <th className="px-6 py-3 text-xs font-semibold text-neutral-500 uppercase tracking-widest border-b border-[#2a2a2a]">Task</th>
+                          <th className="px-6 py-3 text-xs font-semibold text-neutral-500 uppercase tracking-widest border-b border-[#2a2a2a] text-right">Hours Logged</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {timeReport.hours_by_task.length === 0 ? (
+                          <tr>
+                            <td colSpan={2} className="px-6 py-8 text-center text-sm text-neutral-600 italic">No time logged</td>
+                          </tr>
+                        ) : (
+                          timeReport.hours_by_task.map((task: any, idx: number) => (
+                            <tr key={idx} className="hover:bg-[#1a1a1a] transition-colors border-b border-[#1a1a1a] last:border-0">
+                              <td className="px-6 py-4 text-sm text-white font-medium">{task.taskTitle}</td>
+                              <td className="px-6 py-4 text-sm text-neutral-400 font-mono text-right">{task.hours.toFixed(2)}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </>
       )}
     </div>

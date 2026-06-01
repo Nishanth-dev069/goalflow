@@ -11,9 +11,12 @@ import { PriorityBadge } from '@/components/shared/PriorityBadge'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { useTranslation } from '@/lib/utils/i18n'
+import { formatDateIST } from '@/lib/utils/dates'
 
-export function TodaysTasks({ initialData }: { initialData: Task[] }) {
+export function TodaysTasks({ initialData, lang = 'en' }: { initialData: Task[], lang?: 'en' | 'hi' }) {
   const router = useRouter()
+  const t = useTranslation(lang)
   const queryClient = useQueryClient()
   const supabase = createClient()
   const [isLive, setIsLive] = useState(false)
@@ -106,11 +109,11 @@ export function TodaysTasks({ initialData }: { initialData: Task[] }) {
         <div>
           <div className="flex items-center gap-2">
             <CheckSquare size={15} className="text-indigo-400" />
-            <h2 className="text-sm font-semibold text-white">Today's Tasks</h2>
+            <h2 className="text-sm font-semibold text-white">{t('todays_tasks')}</h2>
             <span className="bg-[#1a1a1a] text-xs text-neutral-500 px-1.5 py-0.5 rounded-md">{tasks.length}</span>
             {isLive && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" title="Live updates" />}
           </div>
-          <p className="text-xs text-neutral-600 mt-0.5">{format(new Date(), 'EEEE, MMM d')}</p>
+          <p className="text-xs text-neutral-600 mt-0.5">{formatDateIST(new Date(), 'EEEE, MMM d')}</p>
         </div>
         <Link href="/tasks" className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">All tasks →</Link>
       </div>

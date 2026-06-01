@@ -1,0 +1,70 @@
+.calendar-dark-override .rbc-calendar {
+  color: #fff;
+  font-family: var(--font-geist);
+}
+
+.calendar-dark-override .rbc-month-view,
+.calendar-dark-override .rbc-time-view,
+.calendar-dark-override .rbc-month-row,
+.calendar-dark-override .rbc-day-bg,
+.calendar-dark-override .rbc-header,
+.calendar-dark-override .rbc-time-content,
+.calendar-dark-override .rbc-time-header,
+.calendar-dark-override .rbc-time-header-content {
+  border-color: #2a2a2a !important;
+}
+
+.calendar-dark-override .rbc-header {
+  padding: 8px 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  color: #a3a3a3; /* neutral-400 */
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.calendar-dark-override .rbc-header + .rbc-header {
+  border-left: 1px solid #2a2a2a;
+}
+
+.calendar-dark-override .rbc-day-bg + .rbc-day-bg {
+  border-left: 1px solid #2a2a2a;
+}
+
+.calendar-dark-override .rbc-today {
+  background-color: rgba(99, 102, 241, 0.1) !important; /* indigo-500/10 */
+  border-color: rgba(99, 102, 241, 0.3) !important;
+}
+
+.calendar-dark-override .rbc-off-range-bg {
+  background-color: #111111; /* dim background for off-range days */
+}
+
+.calendar-dark-override .rbc-event,
+.calendar-dark-override .rbc-event.rbc-selected {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+.calendar-dark-override .rbc-row-segment {
+  padding: 0 4px;
+}
+
+.calendar-dark-override .rbc-toolbar button {
+  color: #fff;
+  border-color: #2a2a2a;
+  background: #111111;
+  transition: all 0.2s;
+}
+
+.calendar-dark-override .rbc-toolbar button:hover {
+  background-color: #1a1a1a;
+}
+
+.calendar-dark-override .rbc-toolbar button.rbc-active {
+  background-color: #2a2a2a;
+  color: #fff;
+  box-shadow: none;
+}

@@ -7,6 +7,7 @@ export interface User {
   avatar_url: string | null;
   role: UserRole;
   department_id: string | null;
+  language_preference?: 'en' | 'hi';
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -62,6 +63,9 @@ export interface Task {
   assigned_to: string;
   assigned_by: string;
   due_date: string | null;
+  recurrence?: 'daily' | 'weekly' | 'biweekly' | 'monthly' | null;
+  recurrence_parent_id?: string | null;
+  next_recurrence_date?: string | null;
   is_archived: boolean;
   tags?: string[];
   created_at: string;
@@ -69,10 +73,13 @@ export interface Task {
 
   // Derived fields
   is_overdue?: boolean;
+  is_blocked?: boolean;
 
   // Joined relations
   assignee?: { id: string; full_name: string; avatar_url: string | null; department?: { id: string; name: string; } | null; } | null;
   subtasks?: Subtask[];
+  task_attachments?: TaskAttachment[];
+  task_dependencies?: TaskDependency[];
   comments_count?: number;
 }
 
@@ -102,6 +109,42 @@ export interface TaskHistory {
   old_value: string | null;
   new_value: string | null;
   changed_at: string;
+}
+
+export interface TaskAttachment {
+  id: string;
+  task_id: string;
+  uploaded_by: string;
+  file_name: string;
+  file_size: number;
+  file_type: string;
+  storage_path: string;
+  public_url: string;
+  created_at: string;
+  uploader?: { id: string; full_name: string; avatar_url: string | null; };
+}
+
+export interface TaskDependency {
+  id: string;
+  task_id: string;
+  depends_on_id: string;
+  created_by: string;
+  created_at: string;
+  depends_on?: Task;
+}
+
+export interface TimeEntry {
+  id: string;
+  task_id: string;
+  user_id: string;
+  started_at: string;
+  ended_at: string | null;
+  duration_seconds: number | null;
+  note: string | null;
+  is_manual: boolean;
+  created_at: string;
+  user?: User;
+  task?: Task;
 }
 
 export interface GoalUpdate {

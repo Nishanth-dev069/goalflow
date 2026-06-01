@@ -41,7 +41,8 @@ export async function GET(request: Request) {
         assignee:users!tasks_assigned_to_fkey!inner(id, full_name, avatar_url, department_id),
         assigner:users!tasks_assigned_by_fkey(id, full_name, avatar_url),
         subtasks(id, title, is_done, position),
-        task_comments(count)
+        task_comments(count),
+        task_dependencies(depends_on:tasks!task_dependencies_depends_on_id_fkey(status))
       `, { count: 'exact' })
       .eq('is_archived', false)
 
@@ -83,8 +84,10 @@ export async function GET(request: Request) {
 
     const processedData = data.map(t => {
       const comments_count = t.task_comments?.[0]?.count || 0
+      const is_blocked = (t.task_dependencies || []).some((d: any) => d.depends_on?.status !== 'done' && d.depends_on?.status !== 'cancelled')
       delete (t as any).task_comments
-      return computeTaskFields({ ...t, comments_count })
+      delete (t as any).task_dependencies
+      return computeTaskFields({ ...t, comments_count, is_blocked })
     })
 
     return NextResponse.json({

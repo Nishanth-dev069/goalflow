@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  Activity,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { User } from '@/types'
@@ -44,6 +45,7 @@ const mainNavItems = [
 const adminNavItems = [
   { href: '/admin', icon: LayoutGrid, label: 'Overview' },
   { href: '/admin/users', icon: Users, label: 'Team' },
+  { href: '/admin/workload', icon: Activity, label: 'Workload' },
   { href: '/admin/departments', icon: Building2, label: 'Departments' },
   { href: '/admin/goals', icon: Flag, label: 'Goals' },
   { href: '/admin/tasks', icon: ListTodo, label: 'Tasks' },

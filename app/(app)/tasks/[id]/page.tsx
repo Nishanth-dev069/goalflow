@@ -12,6 +12,10 @@ import { StatusSegmented } from '@/components/tasks/StatusSegmented'
 import { TaskComments } from '@/components/tasks/TaskComments'
 import { TaskHistory } from '@/components/tasks/TaskHistory'
 import { SubtaskList } from '@/components/tasks/SubtaskList'
+import { TaskAttachments } from '@/components/tasks/TaskAttachments'
+import { TaskDependencies } from '@/components/tasks/TaskDependencies'
+import { TimeTracker } from '@/components/tasks/TimeTracker'
+import { Lock } from 'lucide-react'
 
 async function getTaskData(id: string) {
   const supabase = await createClient()
@@ -63,7 +67,14 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
         <div className="w-full lg:w-[65%] space-y-8">
           
           <div>
-            <h1 className="text-3xl font-bold text-white mb-6 leading-tight">{task.title}</h1>
+            <div className="flex items-center gap-3 mb-6">
+              <h1 className="text-3xl font-bold text-white leading-tight">{task.title}</h1>
+              {task.is_blocked && (
+                <span className="flex items-center gap-1.5 bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2.5 py-1 rounded text-xs font-semibold uppercase tracking-widest shrink-0">
+                  <Lock size={12} /> Blocked
+                </span>
+              )}
+            </div>
             
             <div className="flex flex-wrap items-center gap-4">
               <StatusSegmented taskId={task.id} currentStatus={task.status} canEdit={canEditStatus} />
@@ -90,11 +101,17 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
           <div className="border-t border-[#1a1a1a]">
             <TaskComments taskId={task.id} currentUser={user as any} />
           </div>
+
+          <div className="border-t border-[#1a1a1a] pt-6">
+            <TaskAttachments taskId={task.id} currentUser={user as any} />
+          </div>
         </div>
 
         {/* RIGHT SIDEBAR */}
-        <div className="w-full lg:w-[35%] space-y-4 lg:sticky lg:top-6">
-          <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-5 space-y-6">
+        <div className="w-full lg:w-[35%] space-y-6">
+          <TimeTracker taskId={task.id} currentUser={user as any} />
+          
+          <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-5 space-y-4">
             
             <div>
               <div className="text-xs text-neutral-500 mb-2">Assigned To</div>
@@ -144,6 +161,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
             
           </div>
 
+          <TaskDependencies taskId={task.id} currentUser={user as any} />
           <TaskHistory taskId={task.id} />
         </div>
       </div>

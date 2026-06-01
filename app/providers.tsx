@@ -6,6 +6,7 @@ import { Toaster } from 'sonner'
 import { useState } from 'react'
 
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { NuqsAdapter } from 'nuqs/adapters/next/app'
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -29,11 +30,13 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
-      {process.env.NODE_ENV === 'development' && (
-        <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
-      )}
-      <Toaster position="bottom-right" theme="dark" richColors />
+      <NuqsAdapter>
+        {children}
+        {process.env.NODE_ENV === 'development' && (
+          <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
+        )}
+        <Toaster position="bottom-right" theme="dark" richColors />
+      </NuqsAdapter>
     </QueryClientProvider>
   )
 }

@@ -19,7 +19,8 @@ export async function GET(
       assignee:users!tasks_assigned_to_fkey(id, full_name, avatar_url),
       assigner:users!tasks_assigned_by_fkey(id, full_name, avatar_url),
       subtasks(*),
-      task_comments(count)
+      task_comments(count),
+      task_dependencies(depends_on:tasks!task_dependencies_depends_on_id_fkey(status))
     `)
     .eq('id', id)
     .single()
@@ -27,11 +28,13 @@ export async function GET(
   if (error || !task) return NextResponse.json({ error: 'Task not found' }, { status: 404 })
 
   const comments_count = task.task_comments?.[0]?.count || 0
+  const is_blocked = (task.task_dependencies || []).some((d: any) => d.depends_on?.status !== 'done' && d.depends_on?.status !== 'cancelled')
   delete task.task_comments
+  delete task.task_dependencies
 
   // In a real scenario we'd also check authorization based on role here
 
-  return NextResponse.json({ data: computeTaskFields({ ...task, comments_count }) })
+  return NextResponse.json({ data: computeTaskFields({ ...task, comments_count, is_blocked }) })
 }
 
 export async function PATCH(
@@ -131,6 +134,43 @@ export async function PATCH(
           entityId: id,
           entityTitle: task.title,
         })
+      }
+
+      // Handle Recurring Task Logic
+      if (body.status === 'done' && task.recurrence) {
+        const currentDate = task.due_date ? new Date(task.due_date) : new Date()
+        let nextDate = new Date(currentDate)
+        
+        switch (task.recurrence) {
+          case 'daily': nextDate.setDate(nextDate.getDate() + 1); break;
+          case 'weekly': nextDate.setDate(nextDate.getDate() + 7); break;
+          case 'biweekly': nextDate.setDate(nextDate.getDate() + 14); break;
+          case 'monthly': nextDate.setMonth(nextDate.getMonth() + 1); break;
+        }
+
+        const { data: newRecurringTask, error: recurError } = await adminClient.from('tasks').insert({
+          title: task.title,
+          description: task.description,
+          status: 'todo',
+          priority: task.priority,
+          assigned_to: task.assigned_to,
+          assigned_by: task.assigned_by,
+          goal_id: task.goal_id,
+          due_date: nextDate.toISOString().split('T')[0],
+          recurrence: task.recurrence,
+          recurrence_parent_id: task.recurrence_parent_id || task.id,
+          tags: task.tags
+        }).select().single()
+
+        if (!recurError && newRecurringTask) {
+          await createNotification({
+            userId: task.assigned_to,
+            type: 'task_assigned',
+            title: `New recurring task: ${task.title}`,
+            body: `Due on ${nextDate.toISOString().split('T')[0]}`,
+            entityId: newRecurringTask.id
+          })
+        }
       }
     }
 

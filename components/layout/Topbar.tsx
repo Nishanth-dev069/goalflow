@@ -1,12 +1,14 @@
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
-import { Menu, Search, LogOut } from 'lucide-react'
+import { Menu, Search, LogOut, Languages } from 'lucide-react'
 import { User } from '@/types'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { createClient } from '@/lib/supabase/client'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
+import { TopbarTimer } from '@/components/layout/TopbarTimer'
+import { toast } from 'sonner'
 
 interface TopbarProps {
   user: User | null
@@ -48,12 +50,23 @@ export function Topbar({ user, onMenuToggle, onSearchToggle }: TopbarProps) {
     router.refresh()
   }
 
+  const handleLanguageToggle = async (lang: 'en' | 'hi') => {
+    if (!user) return
+    const { error } = await supabase.from('users').update({ language_preference: lang }).eq('id', user.id)
+    if (error) {
+      toast.error('Failed to update language')
+    } else {
+      toast.success('Language updated')
+      router.refresh()
+    }
+  }
+
   return (
     <header className="flex items-center justify-between h-12 px-4 sm:px-6 bg-[#111111] border-b border-[#2a2a2a] z-20">
       <div className="flex items-center gap-4">
         <button
           onClick={onMenuToggle}
-          className="md:hidden text-neutral-400 hover:text-white transition-colors"
+          className="md:hidden flex items-center justify-center w-11 h-11 -ml-2 text-neutral-400 hover:text-white transition-colors"
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -68,6 +81,8 @@ export function Topbar({ user, onMenuToggle, onSearchToggle }: TopbarProps) {
           <Search size={12} /> Search{' '}
           <kbd className="ml-2 text-[10px] bg-[#2a2a2a] px-1.5 py-0.5 rounded">⌘K</kbd>
         </button>
+
+        <TopbarTimer />
 
         {user && <NotificationBell userId={user.id} />}
 
@@ -87,6 +102,19 @@ export function Topbar({ user, onMenuToggle, onSearchToggle }: TopbarProps) {
               <p className="text-sm font-medium text-white truncate">{user?.full_name ?? 'User'}</p>
               <p className="text-xs text-neutral-500 truncate mt-0.5">{user?.email ?? ''}</p>
             </DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-[#2a2a2a] mx-1" />
+            <DropdownMenuItem
+              onSelect={(e) => { e.preventDefault(); handleLanguageToggle(user?.language_preference === 'hi' ? 'en' : 'hi') }}
+              className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm text-neutral-300 hover:text-white hover:bg-[#2a2a2a] cursor-pointer transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Languages size={14} />
+                Language
+              </div>
+              <span className="text-[10px] bg-[#2a2a2a] px-1.5 py-0.5 rounded uppercase font-medium">
+                {user?.language_preference === 'hi' ? 'HI' : 'EN'}
+              </span>
+            </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-[#2a2a2a] mx-1" />
             <DropdownMenuItem
               onSelect={handleSignOut}

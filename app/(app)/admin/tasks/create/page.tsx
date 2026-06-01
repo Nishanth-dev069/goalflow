@@ -13,6 +13,7 @@ import { UserAvatar } from '@/components/shared/UserAvatar'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { format, addDays, nextMonday } from 'date-fns'
+import { getHolidayByDate } from '@/lib/utils/indianHolidays'
 import { X, Search, Check, GripVertical, Loader2, ArrowDown, Minus, ArrowUp, Flame, Plus } from 'lucide-react'
 
 // Simple safe markdown parser
@@ -281,36 +282,58 @@ export default function CreateTaskPage() {
             </div>
           </div>
 
-          {/* SECTION 5 - Due Date */}
+          {/* SECTION 5 - Due Date & Recurrence */}
           <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-6">
-            <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-widest mb-4">Due Date</label>
-            <div className="flex flex-col sm:flex-row gap-6">
-              <div className="flex-1">
-                <input
-                  type="date"
-                  {...register('due_date')}
-                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg h-10 px-3 text-sm text-white focus:border-indigo-500 outline-none [color-scheme:dark]"
-                />
-                <div className="text-2xl font-bold text-white mt-4">
-                  {formValues.due_date ? format(new Date(formValues.due_date), 'MMM d, yyyy') : 'No date set'}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div>
+                <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-widest mb-4">Due Date</label>
+                <div className="flex flex-col gap-4">
+                  <input
+                    type="date"
+                    {...register('due_date')}
+                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg h-10 px-3 text-sm text-white focus:border-indigo-500 outline-none [color-scheme:dark]"
+                  />
+                  {formValues.due_date && getHolidayByDate(formValues.due_date) && (
+                    <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-2 rounded-lg text-xs font-medium">
+                      ⚠️ This is a public holiday ({getHolidayByDate(formValues.due_date)}). Your team may not be working.
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { label: 'Today', date: new Date() },
+                      { label: 'Tomorrow', date: addDays(new Date(), 1) },
+                      { label: 'Next Monday', date: nextMonday(new Date()) },
+                    ].map(preset => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => setValue('due_date', format(preset.date, 'yyyy-MM-dd'))}
+                        className="bg-[#1a1a1a] hover:bg-[#2a2a2a] text-neutral-300 border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <div className="flex flex-col gap-2 flex-1">
-                {[
-                  { label: 'Today', date: new Date() },
-                  { label: 'Tomorrow', date: addDays(new Date(), 1) },
-                  { label: 'Next Monday', date: nextMonday(new Date()) },
-                  { label: 'In 7 days', date: addDays(new Date(), 7) },
-                ].map(preset => (
-                  <button
-                    key={preset.label}
-                    type="button"
-                    onClick={() => setValue('due_date', format(preset.date, 'yyyy-MM-dd'))}
-                    className="bg-[#1a1a1a] hover:bg-[#2a2a2a] text-neutral-300 border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm font-medium transition-colors text-left"
-                  >
-                    {preset.label}
-                  </button>
-                ))}
+
+              <div>
+                <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-widest mb-4">Repeat</label>
+                <select
+                  {...register('recurrence')}
+                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg h-10 px-3 text-sm text-white focus:border-indigo-500 outline-none appearance-none"
+                >
+                  <option value="">Never</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="biweekly">Bi-weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+                {formValues.recurrence && (formValues.recurrence as any) !== '' && (
+                  <p className="text-xs text-indigo-400 mt-2">
+                    A new task will be created automatically when this one is completed.
+                  </p>
+                )}
               </div>
             </div>
           </div>

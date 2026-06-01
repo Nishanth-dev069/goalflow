@@ -16,9 +16,14 @@ import { Search, Plus, CheckSquare, MoreVertical, ChevronUp, ChevronDown, X } fr
 import { format, isPast, isToday } from 'date-fns'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useQueryState } from 'nuqs'
+import { TasksViewSwitcher } from '@/components/tasks/TasksViewSwitcher'
+import { KanbanBoardView } from '@/components/tasks/KanbanBoardView'
+import { CalendarView } from '@/components/tasks/CalendarView'
 
 export default function TasksManagementPage() {
   const router = useRouter()
+  const [view] = useQueryState('view', { defaultValue: 'list' })
   
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
@@ -114,13 +119,16 @@ export default function TasksManagementPage() {
           <h1 className="text-2xl font-bold text-white tracking-tight">Tasks</h1>
           <p className="text-neutral-400 mt-1">Assign and manage tasks for your team</p>
         </div>
-        <button
-          onClick={() => router.push('/admin/tasks/create')}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white h-9 px-4 text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
-        >
-          <Plus size={16} />
-          Assign Task
-        </button>
+        <div className="flex items-center gap-4">
+          <TasksViewSwitcher />
+          <button
+            onClick={() => router.push('/admin/tasks/create')}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white h-9 px-4 text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+          >
+            <Plus size={16} />
+            Assign Task
+          </button>
+        </div>
       </div>
 
       {/* Filter Bar */}
@@ -185,7 +193,13 @@ export default function TasksManagementPage() {
         )}
       </div>
 
-      <div className="relative">
+      {view === 'board' && <KanbanBoardView tasks={filteredTasks} />}
+      
+      {view === 'calendar' && <CalendarView tasks={filteredTasks} />}
+
+      {(view === 'list' || !view) && (
+        <>
+          <div className="relative">
         {/* Bulk Action Bar */}
         {selectedIds.length > 0 && (
           <div className="absolute top-0 left-0 right-0 z-10 bg-indigo-500/10 border border-indigo-500/20 backdrop-blur-md rounded-t-xl px-4 py-3 flex items-center justify-between animate-in slide-in-from-top-2">
@@ -394,6 +408,8 @@ export default function TasksManagementPage() {
           </button>
         </div>
       </div>
+      </>
+      )}
     </div>
   )
 }

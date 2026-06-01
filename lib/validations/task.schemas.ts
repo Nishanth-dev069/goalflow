@@ -8,6 +8,7 @@ export const CreateTaskSchema = z.object({
   priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
   assigned_to: z.string().uuid(),
   due_date: z.string().optional().nullable(),
+  recurrence: z.enum(['daily', 'weekly', 'biweekly', 'monthly']).optional().nullable(),
   subtasks: z.array(z.object({
     title: z.string().min(1),
     position: z.number().default(0)

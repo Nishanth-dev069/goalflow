@@ -5,6 +5,7 @@ import { format, subDays } from 'date-fns';
 import { Users, CheckSquare, Target, TrendingUp } from 'lucide-react';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { RelativeTime } from '@/components/shared/RelativeTime';
+import { DeadlineTriggerButton } from '@/components/admin/DeadlineTriggerButton';
 
 export const metadata = {
   title: 'Admin Overview | GoalFlow',
@@ -56,7 +57,8 @@ export default async function AdminOverviewPage() {
     { count: activeGoalsCount },
     { count: tasksCompletedThisMonth },
     { count: totalTasksThisMonth },
-    { data: recentActivity }
+    { data: recentActivity },
+    { data: overdueTasksRaw }
   ] = await Promise.all([
     supabase.from('users').select('*', { count: 'exact', head: true }).eq('is_active', true),
     supabase.from('tasks').select('*', { count: 'exact', head: true }).in('status', ['todo', 'in_progress']).eq('is_archived', false),
@@ -68,7 +70,12 @@ export default async function AdminOverviewPage() {
     supabase.from('activity_log')
       .select(`*, user:users!activity_log_user_id_fkey(id, full_name, avatar_url)`)
       .order('created_at', { ascending: false })
-      .limit(10)
+      .limit(10),
+    // Overdue tasks for At Risk users
+    supabase.from('tasks')
+      .select('assigned_to, user:users!tasks_assigned_to_fkey(id, full_name, avatar_url)')
+      .lt('due_date', todayStr)
+      .not('status', 'in', '("done","cancelled")')
   ]);
 
   const completionRate = totalTasksThisMonth && totalTasksThisMonth > 0
@@ -80,11 +87,28 @@ export default async function AdminOverviewPage() {
   else if (completionRate >= 40) trendColor = "text-amber-500";
   else if (totalTasksThisMonth && totalTasksThisMonth > 0) trendColor = "text-rose-500";
 
+  // Group overdue tasks by user
+  const overdueData = (overdueTasksRaw || []).reduce((acc: any, task: any) => {
+    if (!task.assigned_to || !task.user) return acc;
+    if (!acc[task.assigned_to]) {
+      acc[task.assigned_to] = { user: task.user, overdueCount: 0 };
+    }
+    acc[task.assigned_to].overdueCount += 1;
+    return acc;
+  }, {});
+
+  const atRiskUsers = Object.values(overdueData)
+    .sort((a: any, b: any) => b.overdueCount - a.overdueCount)
+    .slice(0, 5);
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Admin Overview</h1>
-        <p className="text-neutral-400 mt-1">Platform statistics and recent activity.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Admin Overview</h1>
+          <p className="text-neutral-400 mt-1">Platform statistics and recent activity.</p>
+        </div>
+        <DeadlineTriggerButton />
       </div>
 
       {/* Stats Grid */}
@@ -158,6 +182,41 @@ export default async function AdminOverviewPage() {
                   </div>
                   <div className="text-xs text-neutral-600 whitespace-nowrap">
                     <RelativeTime date={log.created_at} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Team Progress / At Risk Users */}
+      <div>
+        <h2 className="text-sm font-semibold text-white mb-4">Team Progress (At-Risk)</h2>
+        <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl overflow-hidden">
+          {atRiskUsers.length === 0 ? (
+            <div className="p-8 text-center text-emerald-500 text-sm">
+              All good! No users currently have overdue tasks.
+            </div>
+          ) : (
+            <div className="flex flex-col">
+              {atRiskUsers.map((item: any) => (
+                <div key={item.user.id} className="flex items-center gap-3 py-3 px-5 border-b border-[#1a1a1a] last:border-0 hover:bg-[#1a1a1a]/50 transition-colors">
+                  <UserAvatar
+                    user={{
+                      full_name: item.user.full_name || 'Unknown',
+                      avatar_url: item.user.avatar_url
+                    } as any}
+                    className="w-8 h-8"
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-white">{item.user.full_name}</p>
+                    <p className="text-xs text-neutral-500">Action needed to clear backlog</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="inline-block bg-rose-500/10 text-rose-400 text-xs font-bold px-2 py-1 rounded">
+                      {item.overdueCount} Overdue {item.overdueCount === 1 ? 'Task' : 'Tasks'}
+                    </span>
                   </div>
                 </div>
               ))}

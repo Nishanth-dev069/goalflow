@@ -8,6 +8,7 @@ import { MyGoalsPanel } from '@/components/dashboard/MyGoalsPanel'
 import { CompanyGoalsHero } from '@/components/dashboard/CompanyGoalsHero'
 import { PrivateGoalsDashboardSection } from '@/components/dashboard/PrivateGoalsDashboardSection'
 import { QuoteBanner } from '@/components/dashboard/QuoteBanner'
+import { useTranslation } from '@/lib/utils/i18n'
 
 async function getDashboardData() {
   const supabase = await createClient()
@@ -47,10 +48,13 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single()
 
+  const lang = currentUser?.language_preference || 'en'
+  const t = useTranslation(lang as any)
+
   return (
     <div className="p-6 max-w-[1400px] mx-auto min-h-screen pb-32">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white tracking-tight">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-white tracking-tight">{t('dashboard')}</h1>
         <p className="text-neutral-400 mt-1">Here's what's happening with your goals and tasks today.</p>
       </div>
 
@@ -63,7 +67,7 @@ export default async function DashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <MyGoalsPanel goals={data.my_goals || []} currentUser={currentUser} />
-          <TodaysTasks initialData={data.today_tasks || []} />
+          <TodaysTasks initialData={data.today_tasks || []} lang={lang as any} />
         </div>
 
         <PrivateGoalsDashboardSection userId={user.id} />
