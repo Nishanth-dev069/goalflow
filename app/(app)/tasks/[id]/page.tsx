@@ -35,8 +35,8 @@ async function getTaskData(id: string) {
     .from('tasks')
     .select(`
       *,
-      assignee:users!tasks_assigned_to_fkey(id, full_name, avatar_url),
-      assigner:users!tasks_assigned_by_fkey(id, full_name, avatar_url),
+      assignee:users!tasks_assigned_to_fkey(id, full_name, email, avatar_url),
+      assigner:users!tasks_assigned_by_fkey(id, full_name, email, avatar_url),
       subtasks(*),
       task_comments(count)
     `)
@@ -135,7 +135,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
             <div>
               <div className="text-xs text-neutral-500 mb-2">Assigned To</div>
               <div className="flex items-center gap-2">
-                <UserAvatar user={task.assignee} className="w-8 h-8" />
+                <UserAvatar user={task.assignee || null} className="w-8 h-8" />
                 <div>
                   <div className="text-sm font-medium text-white">{task.assignee?.full_name}</div>
                   <div className="text-xs text-neutral-500">{task.assignee?.email}</div>
@@ -173,7 +173,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
             <div>
               <div className="text-xs text-neutral-500 mb-2">Assigned By</div>
               <div className="flex items-center gap-2">
-                <UserAvatar user={task.assigner} className="w-6 h-6" />
+                <UserAvatar user={task.assigner || null} className="w-6 h-6" />
                 <span className="text-sm text-neutral-300">{task.assigner?.full_name}</span>
               </div>
             </div>

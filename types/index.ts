@@ -76,7 +76,8 @@ export interface Task {
   is_blocked?: boolean;
 
   // Joined relations
-  assignee?: { id: string; full_name: string; avatar_url: string | null; department?: { id: string; name: string; } | null; } | null;
+  assignee?: { id: string; full_name: string; email?: string; avatar_url: string | null; department?: { id: string; name: string; } | null; } | null;
+  assigner?: { id: string; full_name: string; email?: string; avatar_url: string | null; } | null;
   subtasks?: Subtask[];
   task_attachments?: TaskAttachment[];
   task_dependencies?: TaskDependency[];

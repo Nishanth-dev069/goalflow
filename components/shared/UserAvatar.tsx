@@ -2,7 +2,7 @@ import { User } from '@/types'
 import { cn } from '@/lib/utils'
 
 interface UserAvatarProps {
-  user: User | null
+  user: Pick<User, 'id' | 'full_name'> & Partial<User> | null
   size?: 'sm' | 'md' | 'lg'
   className?: string
 }

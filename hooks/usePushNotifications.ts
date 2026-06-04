@@ -114,7 +114,10 @@ export function usePushNotifications() {
     }
   }
 
+  const isSupported = typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window
+
   return {
+    isSupported,
     isSubscribed,
     permission,
     checkPermission,
