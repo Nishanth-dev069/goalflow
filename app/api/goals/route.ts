@@ -8,7 +8,8 @@ import { logActivity, computeGoalFields } from '@/lib/api-helpers'
 export async function GET(request: Request) {
   try {
     const supabase = await createClient()
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    const { data: { user: sessionUser }, error: sessionError } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
     
     if (sessionError || !session) {
       return unauthorized()
@@ -49,7 +50,13 @@ export async function GET(request: Request) {
     }
 
     // Role-based filtering
-    if (currentUser.role !== 'admin') {
+    if (currentUser.role === 'manager') {
+      if (currentUser.department_id) {
+        query = query.eq('assigned_to_dept_id', currentUser.department_id)
+      } else {
+        query = query.eq('id', '00000000-0000-0000-0000-000000000000')
+      }
+    } else if (currentUser.role === 'employee') {
       let orFilter = `scope.eq.company,assigned_to_user_id.eq.${currentUser.id},created_by.eq.${currentUser.id}`
       if (currentUser.department_id) {
         orFilter += `,assigned_to_dept_id.eq.${currentUser.department_id}`
@@ -91,7 +98,8 @@ export async function POST(request: Request) {
   let validated = null;
   try {
     const supabase = await createClient()
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    const { data: { user: sessionUser }, error: sessionError } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
     
     if (sessionError || !session) {
       return unauthorized()

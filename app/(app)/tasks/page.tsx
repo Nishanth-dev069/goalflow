@@ -1,12 +1,12 @@
 import React from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import AdminTasksPage from '@/app/(app)/admin/tasks/page'
 import { EmployeeTasksView } from '@/components/tasks/EmployeeTasksView'
 
 export default async function TasksMainPage() {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
 
   if (!session) redirect('/login')
 
@@ -24,7 +24,6 @@ export default async function TasksMainPage() {
     )
   }
 
-  // Admins and Managers use the powerful table view, which manages its own title/layout
-  // Note: We render the admin page component directly.
-  return <AdminTasksPage />
+  // Admins and Managers use the powerful table view
+  redirect(`/${user?.role}/tasks`)
 }

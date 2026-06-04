@@ -13,7 +13,8 @@ export default function PricingPage() {
   const supabase = createClient()
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      const session = user ? { user } : null;
       if (session?.user) {
         supabase.from('users').select('*').eq('id', session.user.id).single()
           .then(({ data }) => setUser(data))

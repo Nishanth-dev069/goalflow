@@ -9,7 +9,8 @@ export async function POST(
 ) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: currentUser } = await supabase
@@ -85,6 +86,28 @@ export async function POST(
         entityId: id,
         entityTitle: updatedGoal.title,
       })
+    }
+
+    // Send push notification to the goal creator if someone else updated it
+    if (goal.created_by && goal.created_by !== currentUser.id) {
+      try {
+        await fetch(new URL('/api/push/send', request.url), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userIds: [goal.created_by],
+            notification: {
+              title: isCompletedNow ? 'Goal Completed' : 'Goal Progress Updated',
+              body: isCompletedNow 
+                ? `"${updatedGoal.title}" has been completed by ${currentUser.full_name || 'a team member'}`
+                : `Progress added to "${updatedGoal.title}"`,
+              url: `/goals/${id}`
+            }
+          })
+        })
+      } catch (e) {
+        console.error('Failed to send push notification', e)
+      }
     }
 
     return NextResponse.json({ data: computeGoalFields(updatedGoal) })

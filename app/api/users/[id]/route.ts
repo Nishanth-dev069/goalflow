@@ -9,7 +9,8 @@ export async function GET(
 ) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: currentUser } = await supabase
@@ -49,7 +50,8 @@ export async function PATCH(
 ) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: currentUser } = await supabase
@@ -144,7 +146,8 @@ export async function DELETE(
 ) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: currentUser } = await supabase

@@ -1,27 +1,41 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Task } from '@/types'
 import { TaskCard } from '@/components/tasks/TaskCard'
-import { useTasks } from '@/lib/queries/tasks'
+import { useInfiniteTasks } from '@/lib/queries/tasks'
 import { isPast, isToday, isThisWeek } from 'date-fns'
 import { Loader2 } from 'lucide-react'
 import { useQueryState } from 'nuqs'
 import { TasksViewSwitcher } from './TasksViewSwitcher'
 import { KanbanBoardView } from './KanbanBoardView'
 import { CalendarView } from './CalendarView'
+import { useInView } from 'react-intersection-observer'
+
+import { SkeletonTaskCard } from '@/components/shared/SkeletonTaskCard'
 
 export function EmployeeTasksView() {
   const [view] = useQueryState('view', { defaultValue: 'list' })
-  const { data, isLoading } = useTasks({ page: 1 })
-  const tasks: Task[] = data?.data || []
+  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteTasks()
+  const { ref, inView } = useInView()
+
+  useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage()
+    }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage])
+
+  const tasks: Task[] = data?.pages.flatMap(page => page.data) || []
   
   const [showCompleted, setShowCompleted] = useState(false)
 
-  if (isLoading) {
+  if (isLoading && tasks.length === 0) {
     return (
-      <div className="flex items-center justify-center py-32">
-        <Loader2 className="animate-spin text-neutral-500" />
+      <div className="pb-32 space-y-6">
+        <TasksViewSwitcher />
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mt-8">
+          {Array.from({ length: 6 }).map((_, i) => <SkeletonTaskCard key={i} />)}
+        </div>
       </div>
     )
   }
@@ -102,6 +116,10 @@ export function EmployeeTasksView() {
                 {completed.map(t => <TaskCard key={t.id} task={t} />)}
               </div>
             )}
+          </div>
+          
+          <div ref={ref} className="h-10 mt-8 flex justify-center">
+            {isFetchingNextPage && <Loader2 className="animate-spin text-neutral-500" size={24} />}
           </div>
         </div>
       )}

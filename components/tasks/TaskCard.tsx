@@ -7,7 +7,8 @@ import { PriorityBadge } from '@/components/shared/PriorityBadge'
 import { isPast, isToday } from 'date-fns'
 import { formatDateIST } from '@/lib/utils/dates'
 import { cn } from '@/lib/utils'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
+import { useUpdateTask } from '@/lib/queries/tasks'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 
@@ -25,35 +26,21 @@ export function TaskCard({ task }: { task: Task }) {
     low: 'bg-emerald-500'
   }[task.priority]
 
-  const updateMutation = useMutation({
-    mutationFn: async (status: string) => {
-      const res = await fetch(`/api/tasks/${task.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      })
-      if (!res.ok) throw new Error('Failed to update status')
-      return res.json()
-    },
-    onMutate: async (status) => {
-      // Very basic optimistic update for the list views
-      toast.success(`Task marked as ${status.replace('_', ' ')}`)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
-    }
-  })
+  const updateMutation = useUpdateTask()
 
   const cycleStatus = (e: React.MouseEvent) => {
     e.stopPropagation()
-    const next = task.status === 'todo' ? 'in_progress' : task.status === 'in_progress' ? 'done' : 'todo'
+    const statuses = ['todo', 'in_progress', 'review', 'done']
+    const currentIndex = statuses.indexOf(task.status)
+    const next = (currentIndex === -1 ? 'todo' : statuses[(currentIndex + 1) % statuses.length]) || 'todo'
     
     if (next === 'in_progress' && task.is_blocked) {
       toast.error('Cannot start task: it is blocked by dependencies')
       return
     }
 
-    updateMutation.mutate(next)
+    toast.success(`Task marked as ${next.replace('_', ' ')}`)
+    updateMutation.mutate({ id: task.id, data: { status: next } })
   }
 
   return (

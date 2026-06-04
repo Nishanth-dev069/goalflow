@@ -9,7 +9,8 @@ export async function GET(
 ) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: currentUser } = await supabase
@@ -67,7 +68,8 @@ export async function PATCH(
 ) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: currentUser } = await supabase
@@ -89,10 +91,9 @@ export async function PATCH(
     (goal.scope === 'department' && goal.assigned_to_dept_id === currentUser.department_id)
   )
   const isAssignee = goal.assigned_to_user_id === currentUser.id
-  const isCompanyGoal = goal.scope === 'company'
   const isDeptMember = goal.scope === 'department' && goal.assigned_to_dept_id === currentUser.department_id
 
-  if (!isAdmin && !isOwningManager && !isAssignee && !isCompanyGoal && !isDeptMember) {
+  if (!isAdmin && !isOwningManager && !isAssignee && !isDeptMember) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -168,7 +169,8 @@ export async function DELETE(
 ) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: currentUser } = await supabase

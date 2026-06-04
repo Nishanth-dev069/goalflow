@@ -8,7 +8,8 @@ import { logActivity, computeTaskFields, createNotification } from '@/lib/api-he
 export async function GET(request: Request) {
   try {
     const supabase = await createClient()
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    const { data: { user: sessionUser }, error: sessionError } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
     
     if (sessionError || !session) {
       return unauthorized()
@@ -38,11 +39,10 @@ export async function GET(request: Request) {
       .from('tasks')
       .select(`
         id, title, status, priority, due_date, assigned_to, assigned_by, created_at, updated_at, description, tags, is_archived,
-        assignee:users!tasks_assigned_to_fkey!inner(id, full_name, avatar_url, department_id),
+        assignee:users!tasks_assigned_to_fkey(id, full_name, avatar_url, department_id),
         assigner:users!tasks_assigned_by_fkey(id, full_name, avatar_url),
         subtasks(id, title, is_done, position),
-        task_comments(count),
-        task_dependencies(depends_on:tasks!task_dependencies_depends_on_id_fkey(status))
+        task_comments(count)
       `, { count: 'exact' })
       .eq('is_archived', false)
 
@@ -53,7 +53,17 @@ export async function GET(request: Request) {
     if (due_to) query = query.lte('due_date', due_to)
 
     if (department_id) {
-      query = query.eq('assignee.department_id', department_id)
+      // Filter tasks where the assignee is in the given department
+      const { data: deptUserIds } = await supabase
+        .from('users')
+        .select('id')
+        .eq('department_id', department_id)
+      const ids = (deptUserIds || []).map((u: any) => u.id)
+      if (ids.length > 0) {
+        query = query.in('assigned_to', ids)
+      } else {
+        query = query.eq('assigned_to', '00000000-0000-0000-0000-000000000000')
+      }
     }
 
     if (currentUser.role !== 'admin') {
@@ -61,7 +71,16 @@ export async function GET(request: Request) {
         query = query.or(`assigned_to.eq.${currentUser.id},assigned_by.eq.${currentUser.id}`)
       } else if (currentUser.role === 'manager') {
         if (currentUser.department_id) {
-          query = query.eq('assignee.department_id', currentUser.department_id)
+          const { data: deptUsers } = await supabase
+            .from('users')
+            .select('id')
+            .eq('department_id', currentUser.department_id)
+          const deptUserIds = (deptUsers || []).map((u: any) => u.id)
+          if (deptUserIds.length > 0) {
+            query = query.or(`assigned_to.in.(${deptUserIds.join(',')}),assigned_by.in.(${deptUserIds.join(',')})`)
+          } else {
+            query = query.eq('assigned_to', '00000000-0000-0000-0000-000000000000')
+          }
         } else {
           query = query.or(`assigned_to.eq.${currentUser.id},assigned_by.eq.${currentUser.id}`)
         }
@@ -70,7 +89,7 @@ export async function GET(request: Request) {
 
     const from = (page - 1) * per_page
     const to = from + per_page - 1
-    query = query.order('due_date', { ascending: true, nullsFirst: false }).range(from, to)
+    query = query.order('created_at', { ascending: false }).range(from, to)
 
     const { data, error, count } = await query
     
@@ -84,9 +103,8 @@ export async function GET(request: Request) {
 
     const processedData = data.map(t => {
       const comments_count = t.task_comments?.[0]?.count || 0
-      const is_blocked = (t.task_dependencies || []).some((d: any) => d.depends_on?.status !== 'done' && d.depends_on?.status !== 'cancelled')
+      const is_blocked = false
       delete (t as any).task_comments
-      delete (t as any).task_dependencies
       return computeTaskFields({ ...t, comments_count, is_blocked })
     })
 
@@ -107,7 +125,8 @@ export async function POST(request: Request) {
   let validated = null;
   try {
     const supabase = await createClient()
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    const { data: { user: sessionUser }, error: sessionError } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
     
     if (sessionError || !session) {
       return unauthorized()
@@ -140,10 +159,17 @@ export async function POST(request: Request) {
 
     const { subtasks, ...taskData } = validated
     
+    let assigneeDeptId = null;
+    if (validated.assigned_to) {
+      const { data: assignee } = await supabase.from('users').select('department_id').eq('id', validated.assigned_to).single()
+      assigneeDeptId = assignee?.department_id || null
+    }
+
     // Explicitly set creator_id just like the user requested for "assigned_by"
     const insertData = {
       ...taskData,
       assigned_by: currentUser.id,
+      department_id: assigneeDeptId,
     }
 
     const { data: newTask, error: insertError } = await supabase
@@ -190,6 +216,24 @@ export async function POST(request: Request) {
         body: newTask.title,
         entityId: newTask.id
       })
+
+      // Send push notification
+      try {
+        await fetch(new URL('/api/push/send', request.url), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userIds: [newTask.assigned_to],
+            notification: {
+              title: 'New Task Assigned',
+              body: `"${newTask.title}" has been assigned to you`,
+              url: '/tasks'
+            }
+          })
+        })
+      } catch (e) {
+        console.error('Failed to send push notification', e)
+      }
     }
 
     return NextResponse.json({ data: newTask }, { status: 201 })

@@ -7,6 +7,7 @@ import { useState } from 'react'
 
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
+import { InstallPWA } from '@/components/InstallPWA'
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -36,6 +37,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
         )}
         <Toaster position="bottom-right" theme="dark" richColors />
+        <InstallPWA />
       </NuqsAdapter>
     </QueryClientProvider>
   )

@@ -10,7 +10,8 @@ export async function DELETE(
   try {
     const { id, attachmentId } = await params
     const supabase = await createClient()
-    const { data: { session } } = await supabase.auth.getSession()
+    const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
     if (!session) return unauthorized()
 
     const { data: attachment } = await supabase.from('task_attachments').select('*').eq('id', attachmentId).single()

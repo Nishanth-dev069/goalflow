@@ -10,30 +10,20 @@ import { PrivateGoalsDashboardSection } from '@/components/dashboard/PrivateGoal
 import { QuoteBanner } from '@/components/dashboard/QuoteBanner'
 import { useTranslation } from '@/lib/utils/i18n'
 
+import { getDashboardDataService } from '@/lib/services/dashboard'
+import { AttendanceWidget } from '@/components/attendance/AttendanceWidget'
+import { getLatestAttendance } from '@/lib/actions/attendance'
+
 async function getDashboardData() {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
   
   if (!session) {
     redirect('/login')
   }
 
-  const headersList = await headers()
-  const host = headersList.get('host')
-  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https'
-  
-  const res = await fetch(`${protocol}://${host}/api/dashboard`, {
-    headers: {
-      cookie: headersList.get('cookie') || '',
-    },
-    cache: 'no-store'
-  })
-
-  if (!res.ok) {
-    throw new Error('Failed to fetch dashboard data')
-  }
-
-  const data = await res.json()
+  const data = await getDashboardDataService(session.user.id)
   return { data, user: session.user }
 }
 
@@ -48,6 +38,7 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single()
 
+  const latestAttendance = await getLatestAttendance()
   const lang = currentUser?.language_preference || 'en'
   const t = useTranslation(lang as any)
 
@@ -59,7 +50,17 @@ export default async function DashboardPage() {
       </div>
 
       <div className="space-y-8">
-        <QuoteBanner stats={data.stats} />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <QuoteBanner stats={data.stats} />
+          </div>
+          <div className="lg:col-span-1">
+            <AttendanceWidget 
+              lastAction={latestAttendance?.action || null} 
+              lastTimestamp={latestAttendance?.timestamp || null} 
+            />
+          </div>
+        </div>
 
         {data.company_goals && data.company_goals.length > 0 && (
           <CompanyGoalsHero goals={data.company_goals} currentUser={currentUser} />

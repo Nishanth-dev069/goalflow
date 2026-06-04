@@ -37,7 +37,7 @@ export function TaskComments({ taskId, currentUser }: { taskId: string, currentU
       const prev = queryClient.getQueryData(['task_comments', taskId])
       
       const optimisticComment = {
-        id: 'temp-' + Date.now(),
+        id: 'temp-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9),
         task_id: taskId,
         user_id: currentUser.id,
         content: text,

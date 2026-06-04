@@ -5,7 +5,8 @@ import { serverError, unauthorized } from '@/lib/utils/errors'
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
-    const { data: { session } } = await supabase.auth.getSession()
+    const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
     if (!session) return unauthorized()
 
     const { task_id, started_at, ended_at, note } = await request.json()

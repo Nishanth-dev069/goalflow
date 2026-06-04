@@ -5,7 +5,8 @@ import { logActivity } from '@/lib/api-helpers'
 
 export async function GET(request: Request) {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: currentUser } = await supabase
@@ -69,7 +70,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: currentUser } = await supabase
@@ -78,13 +80,17 @@ export async function POST(request: Request) {
     .eq('id', session.user.id)
     .single()
 
-  if (!currentUser || !currentUser.is_active || currentUser.role !== 'admin') {
+  if (!currentUser || !currentUser.is_active || !['admin', 'manager'].includes(currentUser.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   try {
     const json = await request.json()
     const body = CreateUserSchema.parse(json)
+
+    if (currentUser.role === 'manager' && body.department_id && body.department_id !== currentUser.department_id) {
+      return NextResponse.json({ error: 'Managers can only assign users to their own department' }, { status: 403 })
+    }
 
     // Check if email exists
     const { data: existingUser } = await supabase
@@ -118,12 +124,16 @@ export async function POST(request: Request) {
     // Wait a brief moment to ensure the database trigger `handle_new_user` has completed
     await new Promise((resolve) => setTimeout(resolve, 500))
 
-    // Update role and department (since trigger creates them as employee with null dept)
+    // If manager is creating the user, force the department_id to the manager's department
+    const assignedDepartmentId = currentUser.role === 'manager' 
+      ? currentUser.department_id 
+      : (body.department_id || null);
+
     const { data: updatedUser, error: updateError } = await adminClient
       .from('users')
       .update({
         role: body.role,
-        department_id: body.department_id || null,
+        department_id: assignedDepartmentId,
       })
       .eq('id', newUserId)
       .select('*, department:departments!users_department_id_fkey(id, name)')

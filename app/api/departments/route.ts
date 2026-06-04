@@ -5,7 +5,8 @@ import { logActivity } from '@/lib/api-helpers'
 
 export async function GET() {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: currentUser } = await supabase
@@ -20,7 +21,7 @@ export async function GET() {
 
   // To get member count, we can do a subquery or fetch users and group them.
   // Using supabase syntax: users(count) where department_id matches
-  const { data, error } = await supabase
+  let query = supabase
     .from('departments')
     .select(`
       *,
@@ -28,7 +29,12 @@ export async function GET() {
       users!users_department_id_fkey(count)
     `)
     .eq('is_active', true)
-    .order('name')
+    
+  if (currentUser.role === 'manager' && currentUser.department_id) {
+    query = query.eq('id', currentUser.department_id)
+  }
+
+  const { data, error } = await query.order('name')
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
@@ -45,7 +51,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: currentUser } = await supabase
@@ -74,6 +81,14 @@ export async function POST(request: Request) {
       .single()
 
     if (error) throw error
+
+    // If a manager was assigned, update their department_id in the users table
+    if (newDept.manager_id) {
+      await adminClient
+        .from('users')
+        .update({ department_id: newDept.id })
+        .eq('id', newDept.manager_id)
+    }
 
     await logActivity({
       userId: currentUser.id,

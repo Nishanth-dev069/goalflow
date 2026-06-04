@@ -4,11 +4,12 @@ import { format, subDays, differenceInDays, parseISO, eachDayOfInterval } from '
 
 export async function GET(request: Request) {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: currentUser } = await supabase.from('users').select('*').eq('id', session.user.id).single()
-  if (!currentUser || currentUser.role !== 'admin') {
+  if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'manager')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -26,6 +27,41 @@ export async function GET(request: Request) {
   const prevTo = format(subDays(parseISO(to), daysDiff), 'yyyy-MM-dd')
 
   try {
+    let userIdsInDept: string[] = []
+    if (currentUser.role === 'manager' && currentUser.department_id) {
+      const { data: deptUsers } = await supabase.from('users').select('id').eq('department_id', currentUser.department_id)
+      userIdsInDept = (deptUsers || []).map(u => u.id)
+      if (userIdsInDept.length === 0) userIdsInDept = ['00000000-0000-0000-0000-000000000000'] // dummy to prevent empty IN clause
+    }
+
+    // 1. Tasks completed
+    let qTasksComp = supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'done').gte('updated_at', from).lte('updated_at', to)
+    if (currentUser.role === 'manager') qTasksComp = qTasksComp.in('assigned_to', userIdsInDept)
+
+    // Prev tasks completed
+    let qPrevTasks = supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'done').gte('updated_at', prevFrom).lte('updated_at', prevTo)
+    if (currentUser.role === 'manager') qPrevTasks = qPrevTasks.in('assigned_to', userIdsInDept)
+
+    // 2. Goal stats
+    let qGoals = supabase.from('goals').select('status, assigned_to_dept_id, end_date')
+    if (currentUser.role === 'manager') qGoals = qGoals.eq('assigned_to_dept_id', currentUser.department_id)
+
+    // 3. Overdue tasks
+    let qOverdue = supabase.from('tasks').select('*', { count: 'exact', head: true }).not('status', 'in', '("done","cancelled")').lt('due_date', todayStr)
+    if (currentUser.role === 'manager') qOverdue = qOverdue.in('assigned_to', userIdsInDept)
+
+    // 4 & 5. Completed tasks for daily & employee stats
+    let qDoneTasks = supabase.from('tasks').select('updated_at, assignee:users!tasks_assigned_to_fkey(id, full_name)').eq('status', 'done').gte('updated_at', from).lte('updated_at', to)
+    if (currentUser.role === 'manager') qDoneTasks = qDoneTasks.in('assigned_to', userIdsInDept)
+
+    // 6. Departments
+    let qDepts = supabase.from('departments').select('id, name')
+    if (currentUser.role === 'manager') qDepts = qDepts.eq('id', currentUser.department_id)
+
+    // 7. All tasks (for department health)
+    let qAllTasks = supabase.from('tasks').select('status, due_date, assigned_to, assignee:users!tasks_assigned_to_fkey(department_id)')
+    if (currentUser.role === 'manager') qAllTasks = qAllTasks.in('assigned_to', userIdsInDept)
+
     const [
       { count: tasksCompleted },
       { count: prevTasksCompleted },
@@ -35,43 +71,22 @@ export async function GET(request: Request) {
       { data: departments },
       { data: allTasks },
     ] = await Promise.all([
-      // 1. Tasks completed
-      supabase.from('tasks').select('*', { count: 'exact', head: true })
-        .eq('status', 'done')
-        .gte('updated_at', from).lte('updated_at', to),
-      
-      // Prev tasks completed
-      supabase.from('tasks').select('*', { count: 'exact', head: true })
-        .eq('status', 'done')
-        .gte('updated_at', prevFrom).lte('updated_at', prevTo),
-
-      // 2. Goal stats (fetch all to group)
-      supabase.from('goals').select('status, assigned_to_dept_id'),
-
-      // 3. Overdue tasks
-      supabase.from('tasks').select('*', { count: 'exact', head: true })
-        .not('status', 'in', '("done","cancelled")')
-        .lt('due_date', todayStr),
-
-      // 4 & 5. Completed tasks for daily & employee stats
-      supabase.from('tasks').select(`
-        updated_at,
-        assignee:users!tasks_assigned_to_fkey(id, full_name)
-      `)
-      .eq('status', 'done')
-      .gte('updated_at', from).lte('updated_at', to),
-
-      // 6. Department health (need all departments)
-      supabase.from('departments').select('id, name'),
-
-      // Need all tasks to compute department health precisely without a million queries
-      supabase.from('tasks').select('status, due_date, assigned_to, assignee:users!tasks_assigned_to_fkey(department_id)')
+      qTasksComp,
+      qPrevTasks,
+      qGoals,
+      qOverdue,
+      qDoneTasks,
+      qDepts,
+      qAllTasks
     ])
 
     // Process Goal Stats
-    const goal_stats: Record<string, number> = { active: 0, completed: 0, draft: 0, cancelled: 0 }
+    const goal_stats: Record<string, number> = { active: 0, completed: 0, draft: 0, cancelled: 0, overdue: 0 }
     allGoals?.forEach((g: any) => {
       goal_stats[g.status] = (goal_stats[g.status] || 0) + 1
+      if (g.status === 'active' && g.end_date && g.end_date < todayStr) {
+        goal_stats['overdue'] = (goal_stats['overdue'] || 0) + 1
+      }
     })
 
     // Process Daily Completions

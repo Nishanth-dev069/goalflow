@@ -1,32 +1,52 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { ClientLayout } from '@/components/layout/ClientLayout'
+import { NotificationPermissionBanner } from '@/components/pwa/NotificationPermissionBanner'
 import { User, Department } from '@/types'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
 
   if (!session?.user) {
     redirect('/login')
   }
 
-  // Fetch current user with their department
-  const { data: userData, error } = await supabase
+  // Query 1: get user row (no join - always succeeds with basic RLS)
+  const { data: userData, error: userError } = await supabase
     .from('users')
-    .select('*, department:departments!users_department_id_fkey(*)')
+    .select('*')
     .eq('id', session.user.id)
     .single()
 
-  if (error || !userData) {
-    // If user profile row is missing (e.g., trigger hasn't fired yet for new auth user),
-    // pass null instead of redirecting — the layout handles null user gracefully
-    return <ClientLayout user={null}>{children}</ClientLayout>
+  if (userError || !userData) {
+    return (
+      <ClientLayout user={null}>
+        {children}
+        <NotificationPermissionBanner />
+      </ClientLayout>
+    )
   }
-  const user = userData as unknown as User & { department: Department | null }
 
-  return <ClientLayout user={user}>{children}</ClientLayout>
+  // Query 2: if department_id exists, get department separately
+  let departmentData = null
+  if (userData.department_id) {
+    const { data: dept } = await supabase
+      .from('departments')
+      .select('*')
+      .eq('id', userData.department_id)
+      .single()
+    departmentData = dept
+  }
+
+  const currentUser = { ...userData, department: departmentData } as unknown as User & { department: Department | null }
+
+  return (
+    <ClientLayout user={currentUser}>
+      {children}
+      <NotificationPermissionBanner />
+    </ClientLayout>
+  )
 }

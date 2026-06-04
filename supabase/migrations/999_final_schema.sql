@@ -280,9 +280,12 @@ END $$;
 CREATE POLICY "users_read_own"
   ON public.users FOR SELECT USING (id = auth.uid());
 
-CREATE POLICY "users_read_as_manager_or_admin"
+CREATE POLICY "users_read_as_manager"
   ON public.users FOR SELECT
-  USING (auth_user_role() IN ('admin', 'manager'));
+  USING (
+    auth_user_role() = 'manager' AND
+    department_id = auth_user_dept()
+  );
 
 CREATE POLICY "users_admin_all"
   ON public.users FOR ALL USING (is_admin());
@@ -298,7 +301,11 @@ CREATE POLICY "users_self_update"
 --- BLOCK 23: RLS Policies — DEPARTMENTS ---
 CREATE POLICY "depts_read_active"
   ON departments FOR SELECT
-  USING (auth.uid() IS NOT NULL AND is_active = TRUE);
+  USING (
+    auth.uid() IS NOT NULL AND 
+    is_active = TRUE AND 
+    (auth_user_role() != 'manager' OR id = auth_user_dept())
+  );
 
 CREATE POLICY "depts_admin_all"
   ON departments FOR ALL USING (is_admin());
@@ -473,6 +480,13 @@ CREATE POLICY "task_history_read"
 --- BLOCK 30: RLS Policies — ACTIVITY LOG ---
 CREATE POLICY "activity_read_own"
   ON activity_log FOR SELECT USING (user_id = auth.uid());
+
+CREATE POLICY "activity_manager_read_dept"
+  ON activity_log FOR SELECT
+  USING (
+    auth_user_role() = 'manager' AND
+    user_id IN (SELECT id FROM public.users WHERE department_id = auth_user_dept())
+  );
 
 CREATE POLICY "activity_admin_read_all"
   ON activity_log FOR SELECT USING (is_admin());

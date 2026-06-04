@@ -28,16 +28,14 @@ export async function GET(request: Request) {
 
     let notificationsCreated = 0
 
-    // Process notifications
-    for (const task of tasks || []) {
+    // Process tasks
+    for (const task of (tasks as any[]) || []) {
       const isOverdue = task.due_date && task.due_date < todayStr
       const title = isOverdue ? 'Task Overdue' : 'Task Due Tomorrow'
       const message = isOverdue 
         ? `The task "${task.title}" is overdue.` 
         : `The task "${task.title}" is due tomorrow.`
 
-      // Check if notification already exists for this task for today
-      // In a real app we might check a 'last_notified' field or similar
       const { data: existing } = await supabase
         .from('notifications')
         .select('id')
@@ -52,10 +50,83 @@ export async function GET(request: Request) {
           user_id: task.assigned_to,
           title,
           message,
-          type: isOverdue ? 'alert' : 'mention', // 'alert' works well for overdue
+          type: isOverdue ? 'alert' : 'mention',
           link: `/tasks/${task.id}`,
         })
         notificationsCreated++
+
+        try {
+          await fetch(new URL('/api/push/send', request.url), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userIds: [task.assigned_to],
+              notification: {
+                title,
+                body: message,
+                url: `/tasks/${task.id}`,
+                type: 'deadline'
+              }
+            })
+          })
+        } catch (e) {
+          console.error('Failed to send push notification', e)
+        }
+      }
+    }
+
+    // Process goals
+    const { data: goals, error: goalsError } = await supabase
+      .from('goals')
+      .select('id, title, created_by, end_date')
+      .not('status', 'in', '("completed","cancelled")')
+      .lte('end_date', tomorrowStr)
+
+    if (!goalsError && goals) {
+      for (const goal of (goals as any[])) {
+        const isOverdue = goal.end_date && goal.end_date < todayStr
+        const title = isOverdue ? 'Goal Overdue' : 'Goal Due Tomorrow'
+        const message = isOverdue 
+          ? `The goal "${goal.title}" is overdue.` 
+          : `The goal "${goal.title}" is due tomorrow.`
+
+        const { data: existing } = await supabase
+          .from('notifications')
+          .select('id')
+          .eq('user_id', goal.created_by)
+          .eq('title', title)
+          .eq('link', `/goals/${goal.id}`)
+          .gte('created_at', todayStr)
+          .limit(1)
+
+        if (!existing || existing.length === 0) {
+          await supabase.from('notifications').insert({
+            user_id: goal.created_by,
+            title,
+            message,
+            type: isOverdue ? 'alert' : 'mention',
+            link: `/goals/${goal.id}`,
+          })
+          notificationsCreated++
+
+          try {
+            await fetch(new URL('/api/push/send', request.url), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userIds: [goal.created_by],
+                notification: {
+                  title,
+                  body: message,
+                  url: `/goals/${goal.id}`,
+                  type: 'deadline'
+                }
+              })
+            })
+          } catch (e) {
+            console.error('Failed to send push notification', e)
+          }
+        }
       }
     }
 

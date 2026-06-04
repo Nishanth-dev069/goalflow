@@ -10,7 +10,8 @@ export async function DELETE(
   try {
     const { id, dependencyId } = await params
     const supabase = await createClient()
-    const { data: { session } } = await supabase.auth.getSession()
+    const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
     if (!session) return unauthorized()
 
     const { data: user } = await supabase.from('users').select('role').eq('id', session.user.id).single()

@@ -1,15 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Task } from '@/types'
+import { useRouter } from 'next/navigation'
 
 async function fetchTasks(params: { status?: string, priority?: string, department_id?: string, assigned_to?: string, page?: number }) {
-  const url = new URL('/api/tasks', window.location.origin)
+  const url = new URL('/api/tasks', typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
   if (params.status && params.status !== 'all') url.searchParams.set('status', params.status)
   if (params.priority && params.priority !== 'all') url.searchParams.set('priority', params.priority)
   if (params.department_id) url.searchParams.set('department_id', params.department_id)
   if (params.assigned_to) url.searchParams.set('assigned_to', params.assigned_to)
   if (params.page) url.searchParams.set('page', params.page.toString())
   
-  const res = await fetch(url.toString())
+  const res = await fetch(url.pathname + url.search, { cache: 'no-store' })
   if (!res.ok) {
     const error = await res.json()
     throw new Error(error.error || 'Failed to fetch tasks')
@@ -24,11 +25,22 @@ export function useTasks(params: { status?: string, priority?: string, departmen
   })
 }
 
+import { useInfiniteQuery } from '@tanstack/react-query'
+
+export function useInfiniteTasks(params: { status?: string, priority?: string, department_id?: string, assigned_to?: string } = {}) {
+  return useInfiniteQuery({
+    queryKey: ['tasks-infinite', params],
+    queryFn: ({ pageParam = 1 }) => fetchTasks({ ...params, page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => lastPage.has_more ? lastPage.page + 1 : undefined,
+  })
+}
+
 export function useTask(id: string) {
   return useQuery({
     queryKey: ['tasks', id],
     queryFn: async () => {
-      const res = await fetch(`/api/tasks/${id}`)
+      const res = await fetch(`/api/tasks/${id}`, { cache: 'no-store' })
       if (!res.ok) {
         const error = await res.json()
         throw new Error(error.error || 'Failed to fetch task')
@@ -42,6 +54,7 @@ export function useTask(id: string) {
 
 export function useCreateTask() {
   const queryClient = useQueryClient()
+  const router = useRouter()
   return useMutation({
     mutationFn: async (data: any) => {
       const res = await fetch('/api/tasks', {
@@ -58,12 +71,15 @@ export function useCreateTask() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      queryClient.invalidateQueries({ queryKey: ['tasks-infinite'] })
+      router.refresh()
     },
   })
 }
 
 export function useUpdateTask() {
   const queryClient = useQueryClient()
+  const router = useRouter()
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
       const res = await fetch(`/api/tasks/${id}`, {
@@ -80,7 +96,9 @@ export function useUpdateTask() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      queryClient.invalidateQueries({ queryKey: ['tasks-infinite'] })
       queryClient.invalidateQueries({ queryKey: ['tasks', variables.id] })
+      router.refresh()
     },
   })
 }
@@ -88,6 +106,7 @@ export function useUpdateTask() {
 // Custom bulk hook since the API doesn't have a single bulk endpoint, we do a Promise.all
 export function useBulkUpdateTasks() {
   const queryClient = useQueryClient()
+  const router = useRouter()
   return useMutation({
     mutationFn: async ({ ids, data }: { ids: string[]; data: any }) => {
       const updates = ids.map(id => 
@@ -104,6 +123,7 @@ export function useBulkUpdateTasks() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      router.refresh()
     },
   })
 }

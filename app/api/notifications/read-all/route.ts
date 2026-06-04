@@ -3,7 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function PATCH(request: Request) {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
   
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

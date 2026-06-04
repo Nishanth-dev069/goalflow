@@ -7,10 +7,11 @@ import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, addWeeks } from 'date
 export async function GET(request: Request) {
   try {
     const supabase = await createClient()
-    const { data: { session } } = await supabase.auth.getSession()
+    const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
     if (!session) return unauthorized()
 
-    const { data: user } = await supabase.from('users').select('role').eq('id', session.user.id).single()
+    const { data: user } = await supabase.from('users').select('role, department_id').eq('id', session.user.id).single()
     if (!user || user.role === 'employee') return forbidden('Only admins and managers can view workload')
 
     const { searchParams } = new URL(request.url)
@@ -28,9 +29,20 @@ export async function GET(request: Request) {
     }
 
     const adminClient = await createAdminClient()
-    const { data: users, error: usersError } = await adminClient
+    let usersQuery = adminClient
       .from('users')
-      .select('id, full_name, avatar_url, department:departments(name)')
+      .select('id, full_name, avatar_url, department:departments!users_department_id_fkey(name)')
+
+    if (user.role === 'manager') {
+      if (user.department_id) {
+        usersQuery = usersQuery.eq('department_id', user.department_id)
+      } else {
+        // Manager without a department has no team members
+        usersQuery = usersQuery.eq('department_id', '00000000-0000-0000-0000-000000000000')
+      }
+    }
+
+    const { data: users, error: usersError } = await usersQuery
 
     if (usersError) return serverError(usersError)
 
@@ -38,82 +50,83 @@ export async function GET(request: Request) {
     const startStr = start.toISOString()
     const endStr = end.toISOString()
 
-    const workloadData = await Promise.all(((users as any[]) || []).map(async (u: any) => {
-      const { count: dueThisPeriod } = await adminClient
-        .from('tasks')
-        .select('*', { count: 'exact', head: true })
-        .eq('assigned_to', u.id)
-        .gte('due_date', startStr)
-        .lte('due_date', endStr)
-        .neq('status', 'cancelled')
+    const userIds = (users as any[] || []).map(u => u.id)
+    const filterIds = userIds.length > 0 ? userIds : ['00000000-0000-0000-0000-000000000000']
 
-      const { data: overdueTasks } = await adminClient
-        .from('tasks')
-        .select('id, title, due_date')
-        .eq('assigned_to', u.id)
-        .lt('due_date', nowStr)
-        .neq('status', 'done')
-        .neq('status', 'cancelled')
-        .order('due_date', { ascending: true })
+    // 1. Fetch ALL relevant tasks in one query
+    let tasksQuery = adminClient.from('tasks').select('id, title, due_date, status, assigned_to')
+    if (user.role === 'manager') tasksQuery = tasksQuery.in('assigned_to', filterIds)
+    const { data: allTasks, error: tasksError } = await tasksQuery
       
-      const overdueCount = overdueTasks?.length || 0
+    // 2. Fetch ALL time entries in the period
+    let timeQuery = adminClient.from('time_entries').select('user_id, duration_seconds').gte('started_at', startStr).lte('started_at', endStr)
+    if (user.role === 'manager') timeQuery = timeQuery.in('user_id', filterIds)
+    const { data: timeEntries, error: timeError } = await timeQuery
 
-      const mappedOverdue = (overdueTasks || []).map(t => ({
-        ...t,
-        days_overdue: Math.max(1, Math.floor((Date.now() - new Date(t.due_date as string).getTime()) / (1000 * 60 * 60 * 24)))
-      }))
+    if (tasksError) return serverError(tasksError)
 
-      const { count: inProgressCount } = await adminClient
-        .from('tasks')
-        .select('*', { count: 'exact', head: true })
-        .eq('assigned_to', u.id)
-        .eq('status', 'in_progress')
+    // Process everything in memory
+    const workloadData = (users as any[] || []).map((u: any) => {
+      let dueThisPeriod = 0
+      let overdueCount = 0
+      let inProgressCount = 0
+      let doneCount = 0
+      let totalCount = 0
+      let activeCount = 0
+      const overdue_tasks: any[] = []
 
-      const { data: timeEntries } = await adminClient
-        .from('time_entries')
-        .select('duration_seconds')
-        .eq('user_id', u.id)
-        .gte('started_at', startStr)
-        .lte('started_at', endStr)
+      // Group tasks for this user
+      const userTasks = ((allTasks as any[]) || []).filter((t: any) => t.assigned_to === u.id)
       
-      const sumSeconds = (timeEntries || []).reduce((acc, curr) => acc + (curr.duration_seconds || 0), 0)
+      userTasks.forEach(t => {
+        const isCancelled = t.status === 'cancelled'
+        const isDone = t.status === 'done'
+        const inRange = t.due_date && t.due_date >= startStr && t.due_date <= endStr
+        const isOverdue = t.due_date && t.due_date < nowStr
+
+        // dueThisPeriod: gte start, lte end, not cancelled
+        if (inRange && !isCancelled) {
+          dueThisPeriod++
+          totalCount++
+          if (isDone) doneCount++
+        }
+
+        // overdue tasks
+        if (isOverdue && !isDone && !isCancelled) {
+          overdueCount++
+          overdue_tasks.push({
+            id: t.id,
+            title: t.title,
+            due_date: t.due_date,
+            days_overdue: Math.max(1, Math.floor((Date.now() - new Date(t.due_date).getTime()) / (1000 * 60 * 60 * 24)))
+          })
+        }
+
+        if (t.status === 'in_progress') inProgressCount++
+        if (t.status === 'todo' || t.status === 'in_progress') activeCount++
+      })
+
+      // Sort overdue tasks by due date
+      overdue_tasks.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
+
+      // Group time entries for this user
+      const userTime = ((timeEntries as any[]) || []).filter((te: any) => te.user_id === u.id)
+      const sumSeconds = userTime.reduce((acc, curr) => acc + (curr.duration_seconds || 0), 0)
       const estimatedHours = +(sumSeconds / 3600).toFixed(1)
 
-      const { count: doneCount } = await adminClient
-        .from('tasks')
-        .select('*', { count: 'exact', head: true })
-        .eq('assigned_to', u.id)
-        .eq('status', 'done')
-        .gte('due_date', startStr)
-        .lte('due_date', endStr)
-      
-      const { count: totalCount } = await adminClient
-        .from('tasks')
-        .select('*', { count: 'exact', head: true })
-        .eq('assigned_to', u.id)
-        .gte('due_date', startStr)
-        .lte('due_date', endStr)
-        .neq('status', 'cancelled')
-
-      const completionRate = totalCount && totalCount > 0 ? (doneCount || 0) / totalCount : 0
-
-      const { count: activeCount } = await adminClient
-        .from('tasks')
-        .select('*', { count: 'exact', head: true })
-        .eq('assigned_to', u.id)
-        .in('status', ['todo', 'in_progress'])
+      const completionRate = totalCount > 0 ? doneCount / totalCount : 0
 
       return {
         ...u,
-        dueThisPeriod: dueThisPeriod || 0,
+        dueThisPeriod,
         overdue: overdueCount,
-        overdue_tasks: mappedOverdue,
-        inProgress: inProgressCount || 0,
+        overdue_tasks,
+        inProgress: inProgressCount,
         estimatedHours,
         completionRate,
-        totalTasks: activeCount || 0
+        totalTasks: activeCount
       }
-    }))
+    })
 
     return NextResponse.json({ data: workloadData })
   } catch (err) {

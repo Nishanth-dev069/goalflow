@@ -13,8 +13,8 @@ import { Plus, Lock, Repeat } from 'lucide-react'
 const COLUMNS = [
   { id: 'todo', title: 'To Do', color: 'border-t-neutral-700' },
   { id: 'in_progress', title: 'In Progress', color: 'border-t-blue-500' },
-  { id: 'done', title: 'Done', color: 'border-t-green-500' },
-  { id: 'cancelled', title: 'Cancelled', color: 'border-t-red-500/50' }
+  { id: 'review', title: 'Review', color: 'border-t-purple-500' },
+  { id: 'done', title: 'Done', color: 'border-t-green-500' }
 ]
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -26,14 +26,15 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 interface KanbanBoardViewProps {
   tasks: Task[]
+  onAddTask?: () => void
 }
 
-export function KanbanBoardView({ tasks }: KanbanBoardViewProps) {
+export function KanbanBoardView({ tasks, onAddTask }: KanbanBoardViewProps) {
   const [boardData, setBoardData] = useState<Record<string, Task[]>>({
     todo: [],
     in_progress: [],
-    done: [],
-    cancelled: []
+    review: [],
+    done: []
   })
   
   // Need this to prevent hydration mismatch with dnd
@@ -50,12 +51,12 @@ export function KanbanBoardView({ tasks }: KanbanBoardViewProps) {
     const grouped = {
       todo: [] as Task[],
       in_progress: [] as Task[],
-      done: [] as Task[],
-      cancelled: [] as Task[]
+      review: [] as Task[],
+      done: [] as Task[]
     }
     
     tasks.forEach(task => {
-      // Map other statuses like 'review' to in_progress or fallback to todo
+      // Map other statuses to todo if not found
       const status = grouped[task.status as keyof typeof grouped] ? task.status : 'todo'
       grouped[status as keyof typeof grouped].push(task)
     })
@@ -139,7 +140,7 @@ export function KanbanBoardView({ tasks }: KanbanBoardViewProps) {
                   )}
                 >
                   {boardData[col.id]?.map((task, index) => {
-                    const isTaskOverdue = task.due_date && isPast(new Date(task.due_date)) && !isToday(new Date(task.due_date)) && task.status !== 'done' && task.status !== 'cancelled'
+                    const isTaskOverdue = task.due_date && isPast(new Date(task.due_date)) && !isToday(new Date(task.due_date)) && task.status !== 'done'
                     
                     return (
                       <Draggable key={task.id} draggableId={task.id} index={index}>
@@ -208,8 +209,10 @@ export function KanbanBoardView({ tasks }: KanbanBoardViewProps) {
                   })}
                   {provided.placeholder}
                   
-                  {col.id === 'todo' && (
-                    <button className="w-full border border-dashed border-[#2a2a2a] hover:border-[#3a3a3a] hover:bg-[#111111] text-neutral-500 hover:text-neutral-300 rounded-xl py-2 flex items-center justify-center gap-1.5 transition-colors text-sm font-medium mt-1">
+                  {col.id === 'todo' && onAddTask && (
+                    <button 
+                      onClick={onAddTask}
+                      className="w-full border border-dashed border-[#2a2a2a] hover:border-[#3a3a3a] hover:bg-[#111111] text-neutral-500 hover:text-neutral-300 rounded-xl py-2 flex items-center justify-center gap-1.5 transition-colors text-sm font-medium mt-1">
                       <Plus size={14} /> Add Task
                     </button>
                   )}

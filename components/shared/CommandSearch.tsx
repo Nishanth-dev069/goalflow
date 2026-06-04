@@ -99,7 +99,10 @@ export function CommandSearch({ open, setOpen, query, setQuery }: Props) {
         {users.length > 0 && (
           <CommandGroup heading="People">
             {users.map((user: any) => (
-              <CommandItem key={`user-${user.id}`} onSelect={() => onSelect(`/admin/users`)}>
+              <CommandItem key={`user-${user.id}`} onSelect={() => {
+                const isManager = typeof window !== 'undefined' && window.location.pathname.startsWith('/manager')
+                onSelect(isManager ? '/manager/users' : '/admin/users')
+              }}>
                 <UserIcon className="mr-2 h-4 w-4 text-neutral-400" />
                 <div className="flex flex-col">
                   <span className="text-sm font-medium">{user.full_name}</span>

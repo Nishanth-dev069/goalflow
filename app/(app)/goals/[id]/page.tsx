@@ -16,27 +16,36 @@ import GoalDetailClientActions from '@/components/goals/GoalDetailClientActions'
 
 async function getGoalData(id: string) {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
   
   if (!session) {
     redirect('/login')
   }
 
-  const headersList = await headers()
-  const host = headersList.get('host')
-  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https'
-  
-  const res = await fetch(`${protocol}://${host}/api/goals/${id}`, {
-    headers: { cookie: headersList.get('cookie') || '' },
-    cache: 'no-store'
-  })
+  const { data: goal, error } = await supabase
+    .from('goals')
+    .select(`
+      *,
+      assigned_user:users!goals_assigned_to_user_id_fkey(id, full_name, avatar_url),
+      assigned_dept:departments!goals_assigned_to_dept_id_fkey(id, name),
+      creator:users!goals_created_by_fkey(id, full_name),
+      goal_updates(
+        id, previous_value, new_value, note, created_at,
+        updater:users!goal_updates_created_by_fkey(id, full_name, avatar_url)
+      )
+    `)
+    .eq('id', id)
+    .single()
 
-  if (!res.ok) {
+  if (error || !goal) {
     return null
   }
 
-  const json = await res.json()
-  return { goal: json.data, user: session.user }
+  const { computeGoalFields } = await import('@/lib/api-helpers')
+  const computedGoal = computeGoalFields(goal)
+
+  return { goal: computedGoal, user: session.user }
 }
 
 function RelativeTime({ date, className }: { date: string, className?: string }) {

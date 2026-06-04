@@ -19,23 +19,42 @@ import { Lock } from 'lucide-react'
 
 async function getTaskData(id: string) {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
   
   if (!session) redirect('/login')
 
-  const headersList = await headers()
-  const host = headersList.get('host')
-  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https'
-  
-  const res = await fetch(`${protocol}://${host}/api/tasks/${id}`, {
-    headers: { cookie: headersList.get('cookie') || '' },
-    cache: 'no-store' // Keep it fresh
-  })
+  // Fetch the DB user record so we have the real role
+  const { data: currentUser } = await supabase
+    .from('users')
+    .select('id, role, department_id')
+    .eq('id', session.user.id)
+    .single()
 
-  if (!res.ok) return null
+  const { data: task, error } = await supabase
+    .from('tasks')
+    .select(`
+      *,
+      assignee:users!tasks_assigned_to_fkey(id, full_name, avatar_url),
+      assigner:users!tasks_assigned_by_fkey(id, full_name, avatar_url),
+      subtasks(*),
+      task_comments(count)
+    `)
+    .eq('id', id)
+    .single()
 
-  const json = await res.json()
-  return { task: json.data, user: session.user }
+  if (error || !task) return null
+
+  const comments_count = task.task_comments?.[0]?.count || 0
+  const is_blocked = false
+  delete task.task_comments
+
+  // In a real app we can use computeTaskFields from api-helpers, but for server component:
+  // (We'll just mock it directly or import it if possible. We can import it since it's just a pure function)
+  const { computeTaskFields } = await import('@/lib/api-helpers')
+  const processedTask = computeTaskFields({ ...task, comments_count, is_blocked })
+
+  return { task: processedTask, user: session.user, currentUser }
 }
 
 export default async function TaskDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -44,9 +63,9 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
 
   if (!data) redirect('/tasks')
 
-  const { task, user } = data
+  const { task, user, currentUser } = data
 
-  const isAdminOrManager = user.user_metadata?.role !== 'employee'
+  const isAdminOrManager = currentUser?.role === 'admin' || currentUser?.role === 'manager'
   const isAssignee = task.assigned_to === user.id
   const canEditStatus = isAssignee || isAdminOrManager
   const isOverdue = task.is_overdue
@@ -96,7 +115,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
           </div>
 
           {/* Subtasks Section */}
-          <SubtaskList taskId={task.id} subtasks={task.subtasks} canEdit={canEditStatus} />
+          <SubtaskList taskId={task.id} subtasks={task.subtasks || []} canEdit={canEditStatus} />
 
           <div className="border-t border-[#1a1a1a]">
             <TaskComments taskId={task.id} currentUser={user as any} />
@@ -154,8 +173,8 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
             <div>
               <div className="text-xs text-neutral-500 mb-2">Assigned By</div>
               <div className="flex items-center gap-2">
-                <UserAvatar user={task.creator} className="w-6 h-6" />
-                <span className="text-sm text-neutral-300">{task.creator?.full_name}</span>
+                <UserAvatar user={task.assigner} className="w-6 h-6" />
+                <span className="text-sm text-neutral-300">{task.assigner?.full_name}</span>
               </div>
             </div>
             

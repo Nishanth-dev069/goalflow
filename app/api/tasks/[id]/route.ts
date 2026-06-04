@@ -9,7 +9,8 @@ export async function GET(
 ) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: task, error } = await supabase
@@ -19,8 +20,7 @@ export async function GET(
       assignee:users!tasks_assigned_to_fkey(id, full_name, avatar_url),
       assigner:users!tasks_assigned_by_fkey(id, full_name, avatar_url),
       subtasks(*),
-      task_comments(count),
-      task_dependencies(depends_on:tasks!task_dependencies_depends_on_id_fkey(status))
+      task_comments(count)
     `)
     .eq('id', id)
     .single()
@@ -28,9 +28,8 @@ export async function GET(
   if (error || !task) return NextResponse.json({ error: 'Task not found' }, { status: 404 })
 
   const comments_count = task.task_comments?.[0]?.count || 0
-  const is_blocked = (task.task_dependencies || []).some((d: any) => d.depends_on?.status !== 'done' && d.depends_on?.status !== 'cancelled')
+  const is_blocked = false
   delete task.task_comments
-  delete task.task_dependencies
 
   // In a real scenario we'd also check authorization based on role here
 
@@ -43,7 +42,8 @@ export async function PATCH(
 ) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: currentUser } = await supabase
@@ -124,6 +124,25 @@ export async function PATCH(
           entityTitle: task.title,
           metadata: { completed_at: new Date().toISOString() }
         })
+
+        if (task.assigned_by && task.assigned_by !== currentUser.id) {
+          try {
+            await fetch(new URL('/api/push/send', request.url), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userIds: [task.assigned_by],
+                notification: {
+                  title: 'Task Completed',
+                  body: `"${task.title}" was marked complete`,
+                  url: '/tasks'
+                }
+              })
+            })
+          } catch (e) {
+            console.error('Failed to send push notification', e)
+          }
+        }
       }
       
       if (body.status === 'cancelled') {
@@ -138,15 +157,17 @@ export async function PATCH(
 
       // Handle Recurring Task Logic
       if (body.status === 'done' && task.recurrence) {
-        const currentDate = task.due_date ? new Date(task.due_date) : new Date()
-        let nextDate = new Date(currentDate)
+        const { parseISO, addDays, addWeeks, addMonths, format } = require('date-fns');
+        let nextDate = task.due_date ? parseISO(task.due_date) : new Date()
         
         switch (task.recurrence) {
-          case 'daily': nextDate.setDate(nextDate.getDate() + 1); break;
-          case 'weekly': nextDate.setDate(nextDate.getDate() + 7); break;
-          case 'biweekly': nextDate.setDate(nextDate.getDate() + 14); break;
-          case 'monthly': nextDate.setMonth(nextDate.getMonth() + 1); break;
+          case 'daily': nextDate = addDays(nextDate, 1); break;
+          case 'weekly': nextDate = addWeeks(nextDate, 1); break;
+          case 'biweekly': nextDate = addWeeks(nextDate, 2); break;
+          case 'monthly': nextDate = addMonths(nextDate, 1); break;
         }
+        
+        const nextDateStr = format(nextDate, 'yyyy-MM-dd')
 
         const { data: newRecurringTask, error: recurError } = await adminClient.from('tasks').insert({
           title: task.title,
@@ -156,18 +177,30 @@ export async function PATCH(
           assigned_to: task.assigned_to,
           assigned_by: task.assigned_by,
           goal_id: task.goal_id,
-          due_date: nextDate.toISOString().split('T')[0],
+          department_id: task.department_id,
+          due_date: nextDateStr,
           recurrence: task.recurrence,
           recurrence_parent_id: task.recurrence_parent_id || task.id,
           tags: task.tags
         }).select().single()
 
         if (!recurError && newRecurringTask) {
+          // Carry over subtasks but reset completion status
+          if (task.subtasks && task.subtasks.length > 0) {
+             const newSubtasks = task.subtasks.map((st: any) => ({
+               task_id: newRecurringTask.id,
+               title: st.title,
+               position: st.position,
+               is_done: false
+             }))
+             await adminClient.from('subtasks').insert(newSubtasks)
+          }
+
           await createNotification({
             userId: task.assigned_to,
             type: 'task_assigned',
             title: `New recurring task: ${task.title}`,
-            body: `Due on ${nextDate.toISOString().split('T')[0]}`,
+            body: `Due on ${nextDateStr}`,
             entityId: newRecurringTask.id
           })
         }
@@ -198,7 +231,8 @@ export async function DELETE(
 ) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: currentUser } = await supabase

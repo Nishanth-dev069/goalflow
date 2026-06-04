@@ -4,11 +4,12 @@ import { format } from 'date-fns'
 
 export async function GET(request: Request) {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user: sessionUser } } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: currentUser } = await supabase.from('users').select('*').eq('id', session.user.id).single()
-  if (!currentUser || currentUser.role !== 'admin') {
+  if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'manager')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -23,15 +24,30 @@ export async function GET(request: Request) {
   const todayStr = format(new Date(), 'yyyy-MM-dd')
 
   try {
-    const [
-      { data: users },
-      { data: tasks },
-      { data: goals }
-    ] = await Promise.all([
-      supabase.from('users').select('id, full_name, email, avatar_url, department:departments!users_department_id_fkey(name)'),
-      supabase.from('tasks').select('assigned_to, status, due_date, created_at, updated_at'),
-      supabase.from('goals').select('assigned_to_user_id, status')
-    ])
+      let usersQuery = supabase.from('users').select('id, full_name, email, avatar_url, department:departments!users_department_id_fkey(name)')
+      if (currentUser.role === 'manager') {
+        usersQuery = usersQuery.eq('department_id', currentUser.department_id)
+      }
+      
+      const { data: users } = await usersQuery
+      
+      let tasksQuery = supabase.from('tasks').select('assigned_to, status, due_date, created_at, updated_at')
+      let goalsQuery = supabase.from('goals').select('assigned_to_user_id, status')
+
+      if (currentUser.role === 'manager') {
+        const userIds = (users || []).map(u => u.id)
+        const filterIds = userIds.length > 0 ? userIds : ['00000000-0000-0000-0000-000000000000']
+        tasksQuery = tasksQuery.in('assigned_to', filterIds)
+        goalsQuery = goalsQuery.in('assigned_to_user_id', filterIds)
+      }
+
+      const [
+        { data: tasks },
+        { data: goals }
+      ] = await Promise.all([
+        tasksQuery,
+        goalsQuery
+      ])
 
     const teamStats = (users || []).map((u: any) => {
       let tasks_assigned = 0

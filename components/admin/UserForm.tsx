@@ -26,9 +26,10 @@ interface UserFormProps {
   isOpen: boolean
   onClose: () => void
   user?: any // If provided, we are editing
+  workspace?: string
 }
 
-export function UserForm({ isOpen, onClose, user }: UserFormProps) {
+export function UserForm({ isOpen, onClose, user, workspace = 'admin' }: UserFormProps) {
   const isEditing = !!user
   const [showPassword, setShowPassword] = useState(false)
 
@@ -183,18 +184,32 @@ export function UserForm({ isOpen, onClose, user }: UserFormProps) {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-white">Department</label>
-              <select
-                {...register('department_id')}
-                className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg h-10 px-3 text-sm text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors appearance-none"
-              >
-                <option value="">No Department</option>
-                {departments?.map(dept => (
-                  <option key={dept.id} value={dept.id}>{dept.name}</option>
-                ))}
-              </select>
-            </div>
+            {workspace === 'admin' ? (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-white">Department</label>
+                <select
+                  {...register('department_id')}
+                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg h-10 px-3 text-sm text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors appearance-none"
+                >
+                  <option value="">No Department</option>
+                  {departments?.map(dept => (
+                    <option key={dept.id} value={dept.id}>{dept.name}</option>
+                  ))}
+                </select>
+              </div>
+            ) : workspace === 'manager' ? (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-white">Department</label>
+                <input
+                  type="text"
+                  disabled
+                  value={departments?.[0]?.name || 'Loading...'}
+                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg h-10 px-3 text-sm text-white outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                {/* Hidden input to ensure department_id is passed if needed, though backend forces it too */}
+                <input type="hidden" {...register('department_id')} value={departments?.[0]?.id || ''} />
+              </div>
+            ) : null}
 
           </form>
         </div>

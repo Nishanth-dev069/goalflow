@@ -1,14 +1,14 @@
 import { z } from 'zod'
 
 export const CreateTaskSchema = z.object({
-  goal_id: z.string().uuid().optional().nullable(),
+  goal_id: z.preprocess((val) => val === '' ? null : val, z.string().uuid().optional().nullable()),
   title: z.string().min(2),
   description: z.string().optional(),
   status: z.enum(['todo', 'in_progress', 'review', 'done', 'cancelled']).default('todo'),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
   assigned_to: z.string().uuid(),
-  due_date: z.string().optional().nullable(),
-  recurrence: z.enum(['daily', 'weekly', 'biweekly', 'monthly']).optional().nullable(),
+  due_date: z.preprocess((val) => val === '' ? null : val, z.string().optional().nullable()),
+  recurrence: z.preprocess((val) => val === '' ? null : val, z.enum(['daily', 'weekly', 'biweekly', 'monthly']).optional().nullable()),
   subtasks: z.array(z.object({
     title: z.string().min(1),
     position: z.number().default(0)

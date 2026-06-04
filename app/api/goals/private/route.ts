@@ -7,7 +7,8 @@ import { logActivity, computeGoalFields } from '@/lib/api-helpers'
 export async function GET(request: Request) {
   try {
     const supabase = await createClient()
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    const { data: { user: sessionUser }, error: sessionError } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
     
     if (sessionError || !session) {
       return unauthorized()
@@ -65,7 +66,8 @@ export async function POST(request: Request) {
   let validated = null;
   try {
     const supabase = await createClient()
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    const { data: { user: sessionUser }, error: sessionError } = await supabase.auth.getUser()
+  const session = sessionUser ? { user: sessionUser } : null
     
     if (sessionError || !session) {
       return unauthorized()

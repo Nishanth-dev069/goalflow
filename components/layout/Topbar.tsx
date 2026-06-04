@@ -17,12 +17,16 @@ interface TopbarProps {
 }
 
 const getPageTitle = (pathname: string) => {
-  if (pathname.startsWith('/admin/users')) return 'Team Members'
-  if (pathname.startsWith('/admin/departments')) return 'Departments'
-  if (pathname.startsWith('/admin/goals')) return 'Goals (Admin)'
-  if (pathname.startsWith('/admin/tasks')) return 'Tasks (Admin)'
-  if (pathname.startsWith('/admin/analytics')) return 'Analytics'
-  if (pathname.startsWith('/admin')) return 'Admin Overview'
+  const isWorkspace = pathname.startsWith('/admin') || pathname.startsWith('/manager')
+  const prefix = pathname.startsWith('/admin') ? '/admin' : '/manager'
+  const roleName = pathname.startsWith('/admin') ? 'Admin' : 'Manager'
+
+  if (pathname.startsWith(`${prefix}/users`)) return 'Team Members'
+  if (pathname.startsWith(`${prefix}/departments`)) return 'Departments'
+  if (pathname.startsWith(`${prefix}/goals`)) return `Goals (${roleName})`
+  if (pathname.startsWith(`${prefix}/tasks`)) return `Tasks (${roleName})`
+  if (pathname.startsWith(`${prefix}/analytics`)) return 'Analytics'
+  if (isWorkspace) return `${roleName} Overview`
   
   if (pathname.startsWith('/dashboard')) return 'Dashboard'
   if (pathname.startsWith('/goals')) {
@@ -82,6 +86,8 @@ export function Topbar({ user, onMenuToggle, onSearchToggle }: TopbarProps) {
           <kbd className="ml-2 text-[10px] bg-[#2a2a2a] px-1.5 py-0.5 rounded">⌘K</kbd>
         </button>
 
+
+
         <TopbarTimer />
 
         {user && <NotificationBell userId={user.id} />}
@@ -102,19 +108,6 @@ export function Topbar({ user, onMenuToggle, onSearchToggle }: TopbarProps) {
               <p className="text-sm font-medium text-white truncate">{user?.full_name ?? 'User'}</p>
               <p className="text-xs text-neutral-500 truncate mt-0.5">{user?.email ?? ''}</p>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-[#2a2a2a] mx-1" />
-            <DropdownMenuItem
-              onSelect={(e) => { e.preventDefault(); handleLanguageToggle(user?.language_preference === 'hi' ? 'en' : 'hi') }}
-              className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm text-neutral-300 hover:text-white hover:bg-[#2a2a2a] cursor-pointer transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <Languages size={14} />
-                Language
-              </div>
-              <span className="text-[10px] bg-[#2a2a2a] px-1.5 py-0.5 rounded uppercase font-medium">
-                {user?.language_preference === 'hi' ? 'HI' : 'EN'}
-              </span>
-            </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-[#2a2a2a] mx-1" />
             <DropdownMenuItem
               onSelect={handleSignOut}
