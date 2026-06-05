@@ -30,15 +30,20 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormInputs) => {
     setLoginError(false)
-    const { error } = await supabase.auth.signInWithPassword({
-      email: data.email,
-      password: data.password,
-    })
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      })
 
-    if (error) {
+      if (error) {
+        setLoginError(true)
+      } else {
+        router.push('/dashboard')
+      }
+    } catch (err) {
+      console.error("Login error:", err)
       setLoginError(true)
-    } else {
-      router.push('/dashboard')
     }
   }
 
