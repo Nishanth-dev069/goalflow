@@ -12,10 +12,5 @@ export default async function GoalsMainPage() {
 
   const { data: user } = await supabase.from('users').select('role').eq('id', session.user.id).single()
 
-  if (user?.role === 'employee') {
-    return <EmployeeGoalsView />
-  }
-
-  // Admins and Managers use the powerful table view
-  redirect(`/${user?.role}/goals`)
+  return <EmployeeGoalsView userRole={user?.role} />
 }

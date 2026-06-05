@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useUpdateGoal } from '@/lib/queries/goals'
 import { CheckCircle2 } from 'lucide-react'
+import { GoalCard } from '@/components/goals/GoalCard'
 
 export function CompanyGoalsHero({ goals, currentUser }: { goals: Goal[], currentUser: any }) {
   const heroGoals = goals.filter(g => g.type === 'yearly' || g.type === 'long_term')
@@ -39,8 +40,8 @@ export function CompanyGoalsHero({ goals, currentUser }: { goals: Goal[], curren
       )}
 
       {regularGoals.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {regularGoals.map(goal => <CompactGoalCard key={goal.id} goal={goal} currentUser={currentUser} />)}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {regularGoals.map(goal => <GoalCard key={goal.id} goal={goal} />)}
         </div>
       )}
     </div>

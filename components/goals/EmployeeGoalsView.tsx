@@ -8,8 +8,9 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { Target, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PrivateGoalsSection } from '@/components/goals/PrivateGoalsSection'
+import Link from 'next/link'
 
-export default function EmployeeGoalsView() {
+export default function EmployeeGoalsView({ userRole }: { userRole?: string }) {
   const [activeType, setActiveType] = useState('all')
   const [activeStatus, setActiveStatus] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -54,6 +55,14 @@ export default function EmployeeGoalsView() {
           <h1 className="text-3xl font-bold text-white tracking-tight">Goals</h1>
           <p className="text-neutral-400 mt-1">Track company, department, and personal objectives.</p>
         </div>
+        {(userRole === 'admin' || userRole === 'manager') && (
+          <Link 
+            href={`/${userRole}/goals`}
+            className="inline-flex items-center justify-center h-10 px-4 bg-[#2a2a2a] hover:bg-[#3a3a3a] border border-[#3a3a3a] hover:border-[#4a4a4a] text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            Manage Goals
+          </Link>
+        )}
       </div>
 
       <div className="space-y-4">
