@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
-import { Menu, Search, LogOut, Languages } from 'lucide-react'
+import { Menu, Search, LogOut, Languages, RefreshCcw } from 'lucide-react'
 import { User } from '@/types'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -86,7 +86,13 @@ export function Topbar({ user, onMenuToggle, onSearchToggle }: TopbarProps) {
           <kbd className="ml-2 text-[10px] bg-[#2a2a2a] px-1.5 py-0.5 rounded">⌘K</kbd>
         </button>
 
-
+        <button
+          onClick={() => window.location.reload()}
+          className="flex items-center justify-center w-8 h-8 rounded-md bg-[#1a1a1a] border border-[#2a2a2a] text-neutral-500 hover:text-white hover:border-[#3a3a3a] transition-colors"
+          title="Refresh App"
+        >
+          <RefreshCcw size={14} />
+        </button>
 
         <TopbarTimer />
 

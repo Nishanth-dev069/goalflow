@@ -72,7 +72,6 @@ export function useCreateTask() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
       queryClient.invalidateQueries({ queryKey: ['tasks-infinite'] })
-      router.refresh()
     },
   })
 }
@@ -98,7 +97,6 @@ export function useUpdateTask() {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
       queryClient.invalidateQueries({ queryKey: ['tasks-infinite'] })
       queryClient.invalidateQueries({ queryKey: ['tasks', variables.id] })
-      router.refresh()
     },
   })
 }
@@ -123,7 +121,6 @@ export function useBulkUpdateTasks() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
-      router.refresh()
     },
   })
 }

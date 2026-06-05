@@ -58,7 +58,6 @@ export function useCreateGoal() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['goals'] })
-      router.refresh()
     },
   })
 }
@@ -83,7 +82,6 @@ export function useUpdateGoal() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['goals'] })
       queryClient.invalidateQueries({ queryKey: ['goals', variables.id] })
-      router.refresh()
     },
   })
 }
@@ -102,7 +100,6 @@ export function useDeleteGoal() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['goals'] })
-      router.refresh()
     },
   })
 }

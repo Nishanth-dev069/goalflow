@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { InstallPWA } from '@/components/InstallPWA'
+import { RealtimeProvider } from '@/components/providers/RealtimeProvider'
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -20,7 +21,6 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             retry: 1,
             retryDelay: 1000,
             refetchOnWindowFocus: false, // Don't refetch on tab switch
-            refetchOnMount: false, // Don't refetch if data is fresh
           },
           mutations: {
             retry: 0, // Never retry mutations
@@ -38,6 +38,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         )}
         <Toaster position="bottom-right" theme="dark" richColors />
         <InstallPWA />
+        <RealtimeProvider />
       </NuqsAdapter>
     </QueryClientProvider>
   )
