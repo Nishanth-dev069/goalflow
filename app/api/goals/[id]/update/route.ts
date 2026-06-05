@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { GoalUpdateSchema } from '@/lib/validations/goal.schemas'
-import { logActivity, computeGoalFields } from '@/lib/api-helpers'
+import { logActivity, computeGoalFields, createNotification } from '@/lib/api-helpers'
 
 export async function POST(
   request: Request,
@@ -91,22 +91,18 @@ export async function POST(
     // Send push notification to the goal creator if someone else updated it
     if (goal.created_by && goal.created_by !== currentUser.id) {
       try {
-        await fetch(new URL('/api/push/send', request.url), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userIds: [goal.created_by],
-            notification: {
-              title: isCompletedNow ? 'Goal Completed' : 'Goal Progress Updated',
-              body: isCompletedNow 
-                ? `"${updatedGoal.title}" has been completed by ${currentUser.full_name || 'a team member'}`
-                : `Progress added to "${updatedGoal.title}"`,
-              url: `/goals/${id}`
-            }
-          })
+        await createNotification({
+          userId: goal.created_by,
+          type: isCompletedNow ? 'goal_completed' : 'goal_progress_updated',
+          title: isCompletedNow ? 'Goal Completed' : 'Goal Progress Updated',
+          body: isCompletedNow 
+            ? `"${updatedGoal.title}" has been completed by ${currentUser.full_name || 'a team member'}`
+            : `Progress added to "${updatedGoal.title}"`,
+          entityId: id,
+          url: `/goals/${id}`
         })
       } catch (e) {
-        console.error('Failed to send push notification', e)
+        console.error('Failed to create notification', e)
       }
     }
 

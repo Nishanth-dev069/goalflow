@@ -127,20 +127,16 @@ export async function PATCH(
 
         if (task.assigned_by && task.assigned_by !== currentUser.id) {
           try {
-            await fetch(new URL('/api/push/send', request.url), {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                userIds: [task.assigned_by],
-                notification: {
-                  title: 'Task Completed',
-                  body: `"${task.title}" was marked complete`,
-                  url: '/tasks'
-                }
-              })
+            await createNotification({
+              userId: task.assigned_by,
+              type: 'task_completed',
+              title: 'Task Completed',
+              body: `"${task.title}" was marked complete`,
+              entityId: id,
+              url: '/tasks'
             })
           } catch (e) {
-            console.error('Failed to send push notification', e)
+            console.error('Failed to create notification', e)
           }
         }
       }

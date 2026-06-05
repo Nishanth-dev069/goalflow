@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { addDays, format } from 'date-fns'
+import { createNotification } from '@/lib/api-helpers'
 
 export async function GET(request: Request) {
   // Protect this route with a simple secret in production
@@ -46,32 +47,15 @@ export async function GET(request: Request) {
         .limit(1)
 
       if (!existing || existing.length === 0) {
-        await supabase.from('notifications').insert({
-          user_id: task.assigned_to,
-          title,
-          message,
+        await createNotification({
+          userId: task.assigned_to,
           type: isOverdue ? 'alert' : 'mention',
-          link: `/tasks/${task.id}`,
+          title,
+          body: message,
+          entityId: task.id,
+          url: `/tasks/${task.id}`
         })
         notificationsCreated++
-
-        try {
-          await fetch(new URL('/api/push/send', request.url), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userIds: [task.assigned_to],
-              notification: {
-                title,
-                body: message,
-                url: `/tasks/${task.id}`,
-                type: 'deadline'
-              }
-            })
-          })
-        } catch (e) {
-          console.error('Failed to send push notification', e)
-        }
       }
     }
 
@@ -100,32 +84,15 @@ export async function GET(request: Request) {
           .limit(1)
 
         if (!existing || existing.length === 0) {
-          await supabase.from('notifications').insert({
-            user_id: goal.created_by,
-            title,
-            message,
+          await createNotification({
+            userId: goal.created_by,
             type: isOverdue ? 'alert' : 'mention',
-            link: `/goals/${goal.id}`,
+            title,
+            body: message,
+            entityId: goal.id,
+            url: `/goals/${goal.id}`
           })
           notificationsCreated++
-
-          try {
-            await fetch(new URL('/api/push/send', request.url), {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                userIds: [goal.created_by],
-                notification: {
-                  title,
-                  body: message,
-                  url: `/goals/${goal.id}`,
-                  type: 'deadline'
-                }
-              })
-            })
-          } catch (e) {
-            console.error('Failed to send push notification', e)
-          }
         }
       }
     }

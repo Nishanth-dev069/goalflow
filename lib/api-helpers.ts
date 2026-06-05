@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { Goal, Task } from '@/types'
 import { differenceInDays, isPast } from 'date-fns'
+import { sendPushNotification } from '@/lib/push'
 
 export async function logActivity({
   userId,
@@ -39,12 +40,14 @@ export async function createNotification({
   title,
   body,
   entityId,
+  url,
 }: {
   userId: string
   type: string
   title: string
   body: string
   entityId?: string
+  url?: string
 }) {
   try {
     const adminClient = await createAdminClient()
@@ -55,6 +58,15 @@ export async function createNotification({
       body,
       entity_id: entityId || null,
     })
+
+    // Dispatch web push directly
+    await sendPushNotification([userId], {
+      title,
+      body,
+      type,
+      url: url || '/'
+    })
+
   } catch (error) {
     console.error('Failed to create notification:', error)
   }

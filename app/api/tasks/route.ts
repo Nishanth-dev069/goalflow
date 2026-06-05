@@ -214,26 +214,9 @@ export async function POST(request: Request) {
         type: 'task_assigned',
         title: 'New task assigned',
         body: newTask.title,
-        entityId: newTask.id
+        entityId: newTask.id,
+        url: '/tasks'
       })
-
-      // Send push notification
-      try {
-        await fetch(new URL('/api/push/send', request.url), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userIds: [newTask.assigned_to],
-            notification: {
-              title: 'New Task Assigned',
-              body: `"${newTask.title}" has been assigned to you`,
-              url: '/tasks'
-            }
-          })
-        })
-      } catch (e) {
-        console.error('Failed to send push notification', e)
-      }
     }
 
     return NextResponse.json({ data: newTask }, { status: 201 })
