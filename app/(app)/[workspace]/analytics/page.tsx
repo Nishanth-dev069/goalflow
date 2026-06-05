@@ -14,6 +14,7 @@ import {
   PieChart, Pie, Cell,
   BarChart, Bar
 } from 'recharts'
+import { BackButton } from '@/components/shared/BackButton'
 
 const PRESETS = [
   { label: '7D', days: 7 },
@@ -98,7 +99,8 @@ export default function AdminAnalyticsPage() {
   // To keep it simple per prompt, if overdue_tasks > 0 we can show the banner.
   
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8 min-h-screen pb-32">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-8 min-h-screen pb-32">
+      <BackButton />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white tracking-tight">Analytics</h1>
@@ -126,7 +128,7 @@ export default function AdminAnalyticsPage() {
       ) : (
         <>
           {/* ROW 1: KPI STAT CARDS */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Card 1 */}
             <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-5 hover:border-[#3a3a3a] transition-colors">
               <div className="flex items-center gap-2 text-neutral-400 mb-3">

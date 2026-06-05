@@ -7,6 +7,7 @@ import { UserAvatar } from '@/components/shared/UserAvatar'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { TallyExportButton } from '@/components/admin/TallyExportButton'
+import { BackButton } from '@/components/shared/BackButton'
 
 const FILTERS = [
   { id: 'this_week', label: 'This Week' },
@@ -75,7 +76,8 @@ export default function WorkloadPage() {
   })
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8 min-h-screen pb-32">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-8 min-h-screen pb-32">
+      <BackButton />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white tracking-tight">Workload</h1>

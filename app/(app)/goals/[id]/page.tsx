@@ -74,7 +74,7 @@ export default async function GoalDetailPage({ params }: { params: Promise<{ id:
   const progress = goal.progress_percentage || 0
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-8 min-h-screen pb-32">
+    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-8 min-h-screen pb-32">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-neutral-500">
         <Link href="/goals" className="hover:text-white transition-colors flex items-center gap-1"><ArrowLeft size={14}/> Goals</Link>
@@ -160,7 +160,7 @@ export default async function GoalDetailPage({ params }: { params: Promise<{ id:
             <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-widest mb-4">Goal Details</h3>
             
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <div className="text-xs text-neutral-500 mb-1">Created By</div>
                   <div className="text-sm text-white">{goal.creator?.full_name}</div>
@@ -173,7 +173,7 @@ export default async function GoalDetailPage({ params }: { params: Promise<{ id:
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <div className="text-xs text-neutral-500 mb-1">Start Date</div>
                   <div className="text-sm text-white">{format(new Date(goal.start_date), 'MMM d, yyyy')}</div>

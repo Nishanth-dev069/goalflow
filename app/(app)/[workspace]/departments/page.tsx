@@ -11,6 +11,7 @@ import { useDepartments, useUpdateDepartment, DepartmentWithStats } from '@/lib/
 import { Plus, Building2, Users as UsersIcon, CheckSquare } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { BackButton } from '@/components/shared/BackButton'
 
 export default function DepartmentsManagementPage({ params }: { params: { workspace: string } }) {
   const workspace = params.workspace || 'admin'
@@ -71,7 +72,8 @@ export default function DepartmentsManagementPage({ params }: { params: { worksp
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
+      <BackButton />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Departments</h1>
@@ -118,7 +120,7 @@ export default function DepartmentsManagementPage({ params }: { params: { worksp
                 {dept.description || 'No description provided.'}
               </p>
               
-              <div className="grid grid-cols-2 gap-2 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
                 <div className="bg-[#1a1a1a] rounded-lg px-3 py-2 text-center flex flex-col items-center justify-center">
                   <span className="text-lg font-bold text-white">{dept.member_count || 0}</span>
                   <div className="flex items-center gap-1 text-xs text-neutral-500 mt-0.5">

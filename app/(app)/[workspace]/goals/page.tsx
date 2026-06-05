@@ -8,6 +8,7 @@ import { ScopeBadge } from '@/components/shared/ScopeBadge'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { BackButton } from '@/components/shared/BackButton'
 import { useGoals, useUpdateGoal, useDeleteGoal } from '@/lib/queries/goals'
 import { Goal } from '@/types'
 import { Search, MoreVertical, Plus, Target, CheckCircle2, Clock } from 'lucide-react'
@@ -83,7 +84,8 @@ export default function GoalsManagementPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
+      <BackButton />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Goals</h1>

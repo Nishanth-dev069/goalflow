@@ -42,10 +42,21 @@ export function ClientLayout({ children, user }: ClientLayoutProps) {
         <Topbar user={user} onMenuToggle={toggleSidebar} onSearchToggle={() => search.setOpen(true)} />
         <PWAInstallPrompt />
         <PushNotificationPrompt />
-        <main className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        <main className="flex-1 overflow-y-auto flex flex-col">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full">
             {children}
           </div>
+          <footer className="w-full py-8 mt-auto border-t border-[#1a1a1a]">
+            <div className="flex flex-col items-center justify-center gap-1">
+              <span className="text-[10px] text-neutral-500 font-medium tracking-wide uppercase">Developed by</span>
+              <a href="https://zyxen.in" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-white tracking-widest hover:text-indigo-400 transition-colors">
+                ZYXEN
+              </a>
+              <span className="text-[10px] text-neutral-500 font-medium mt-1">
+                Made with <span className="text-red-500">❤️</span> in India
+              </span>
+            </div>
+          </footer>
         </main>
       </div>
       <CommandSearch {...search} />

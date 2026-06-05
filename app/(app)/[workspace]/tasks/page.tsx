@@ -8,9 +8,10 @@ import { PriorityBadge } from '@/components/shared/PriorityBadge'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { useTasks, useUpdateTask, useBulkUpdateTasks } from '@/lib/queries/tasks'
+import { useTasks, useUpdateTask, useBulkUpdateTasks, useDeleteTask } from '@/lib/queries/tasks'
 import { useUsers } from '@/lib/queries/users'
 import { useDepartments } from '@/lib/queries/departments'
+import { BackButton } from '@/components/shared/BackButton'
 import { Task } from '@/types'
 import { Search, Plus, CheckSquare, MoreVertical, ChevronUp, ChevronDown, X } from 'lucide-react'
 import { format, isPast, isToday } from 'date-fns'
@@ -115,7 +116,8 @@ export default function TasksManagementPage() {
   const hasFilters = search || statusFilter !== 'all' || priorityFilter !== 'all' || departmentFilter !== 'all' || assigneeFilter !== 'all'
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-6">
+      <BackButton />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Tasks</h1>

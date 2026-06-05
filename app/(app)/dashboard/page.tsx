@@ -9,6 +9,7 @@ import { CompanyGoalsHero } from '@/components/dashboard/CompanyGoalsHero'
 import { PrivateGoalsDashboardSection } from '@/components/dashboard/PrivateGoalsDashboardSection'
 import { QuoteBanner } from '@/components/dashboard/QuoteBanner'
 import { useTranslation } from '@/lib/utils/i18n'
+import { BackButton } from '@/components/shared/BackButton'
 
 import { getDashboardDataService } from '@/lib/services/dashboard'
 import { AttendanceWidget } from '@/components/attendance/AttendanceWidget'
@@ -43,7 +44,8 @@ export default async function DashboardPage() {
   const t = useTranslation(lang as any)
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto min-h-screen pb-32">
+    <div className="p-4 md:p-6 max-w-[1400px] mx-auto min-h-screen pb-32">
+      <BackButton />
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white tracking-tight">{t('dashboard')}</h1>
         <p className="text-neutral-400 mt-1">Here's what's happening with your goals and tasks today.</p>

@@ -6,6 +6,7 @@ import { Users, CheckSquare, Target, TrendingUp } from 'lucide-react';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { RelativeTime } from '@/components/shared/RelativeTime';
 import { DeadlineTriggerButton } from '@/components/admin/DeadlineTriggerButton';
+import { BackButton } from '@/components/shared/BackButton';
 
 export const metadata = {
   title: 'Admin Overview | GoalFlow',
@@ -123,7 +124,8 @@ export default async function AdminOverviewPage() {
     .slice(0, 5);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-8">
+      <BackButton />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight capitalize">{currentUser.role} Overview</h1>
@@ -133,7 +135,7 @@ export default async function AdminOverviewPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-5">
           <div className="flex justify-between items-start">
             <h3 className="text-xs text-neutral-500 uppercase tracking-wide font-medium">Total Team Members</h3>

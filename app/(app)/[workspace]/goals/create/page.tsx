@@ -17,6 +17,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { format, addDays, addMonths, addYears, endOfWeek, endOfMonth, endOfQuarter, endOfYear, parseISO } from 'date-fns'
+import { BackButton } from '@/components/shared/BackButton'
 
 // Shadcn Calendar/Popover placeholders. For actual impl, we would import Shadcn Calendar, but using standard inputs for speed and simplicity.
 // In a full environment with Shadcn UI installed, we'd do:
@@ -82,7 +83,8 @@ export default function CreateGoalPage() {
   const selectedDept = departments?.find(d => d.id === formValues.assigned_to_dept_id)
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto min-h-screen pb-32">
+    <div className="p-4 md:p-6 max-w-[1400px] mx-auto min-h-screen pb-32">
+      <BackButton />
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white tracking-tight">Create Goal</h1>
         <p className="text-neutral-400 mt-1">Define a new objective and set its tracking parameters.</p>
@@ -112,7 +114,7 @@ export default function CreateGoalPage() {
           {/* SECTION 2 - Goal Type */}
           <div className="p-8 border-b border-[#2a2a2a]">
             <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-widest mb-4">Goal Type</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
               {[
                 { id: 'daily', icon: Clock, label: 'Daily', desc: '1-day task focus' },
                 { id: 'weekly', icon: Clock, label: 'Weekly', desc: '7-day sprint target' },

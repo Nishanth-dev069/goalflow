@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import { format, addDays, nextMonday } from 'date-fns'
 import { getHolidayByDate } from '@/lib/utils/indianHolidays'
 import { X, Search, Check, GripVertical, Loader2, ArrowDown, Minus, ArrowUp, Flame, Plus } from 'lucide-react'
+import { BackButton } from '@/components/shared/BackButton'
 
 // Simple safe markdown parser
 const parseMarkdown = (text: string) => {
@@ -139,7 +140,8 @@ export default function CreateTaskPage() {
   }
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto min-h-screen pb-32">
+    <div className="p-4 md:p-6 max-w-[1400px] mx-auto min-h-screen pb-32">
+      <BackButton />
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white tracking-tight">Assign Task</h1>
         <p className="text-neutral-400 mt-1">Create a detailed task and delegate it to a team member.</p>
@@ -254,7 +256,7 @@ export default function CreateTaskPage() {
           {/* SECTION 4 - Priority */}
           <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-6">
             <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-widest mb-4">Priority</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
               {[
                 { id: 'low', icon: ArrowDown, label: 'Low', desc: 'Can wait', color: 'text-emerald-400', bg: 'bg-emerald-500/5', border: 'border-emerald-500' },
                 { id: 'medium', icon: Minus, label: 'Medium', desc: 'Normal priority', color: 'text-amber-400', bg: 'bg-amber-500/5', border: 'border-amber-500' },

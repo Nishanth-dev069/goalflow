@@ -227,7 +227,7 @@ export function TimeTracker({ taskId, currentUser }: { taskId: string, currentUs
               <label className="block text-xs font-medium text-neutral-400 mb-1">Date</label>
               <input type="date" {...register('date', { required: true })} className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg h-9 px-3 text-sm [color-scheme:dark]" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-neutral-400 mb-1">Start Time</label>
                 <input type="time" {...register('startTime', { required: true })} className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg h-9 px-3 text-sm [color-scheme:dark]" />

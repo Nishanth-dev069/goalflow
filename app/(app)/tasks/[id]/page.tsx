@@ -71,7 +71,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
   const isOverdue = task.is_overdue
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-8 min-h-screen pb-32">
+    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-8 min-h-screen pb-32">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-neutral-500">
         <Link href={isAdminOrManager ? "/admin/tasks" : "/tasks"} className="hover:text-white transition-colors flex items-center gap-1">
@@ -143,7 +143,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <div className="text-xs text-neutral-500 mb-1">Due Date</div>
                 <div className={isOverdue ? "text-sm text-rose-400 font-semibold" : "text-sm text-white"}>
